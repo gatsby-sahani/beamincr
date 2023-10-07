@@ -1,0 +1,563 @@
+\documentclass[a4paper]{ltxdoc}
+% \usepackage[margin=2cm]{geometry}
+%% Fonts, etc.
+
+%% Language and font encodings
+\usepackage[english]{babel}
+%\usepackage[utf8x]{inputenc}
+%\usepackage[T1]{fontenc}        
+% \usepackage{microtype}      % fine pdf font control
+
+% \usepackage[scaled=0.92]{helvet} \renewcommand{\familydefault}{\sfdefault}
+% \usepackage{xcolor} -- loaded by tikz
+% \usepackage{soul} % \ul \st \hl
+
+%% packages from beamer user guide
+\usepackage{cmap}
+\usepackage{lmodern}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb}
+\usepackage{pifont}
+\usepackage{makeidx}
+\usepackage{pgf,xcolor}
+\usepackage[pdfborder={0 0 0},bookmarksnumbered]{hyperref}
+\usepackage[left=2.25cm,right=2.25cm,top=2.5cm,bottom=2.5cm,nohead]{geometry}
+\usepackage{translator}
+
+%% beamer userguide macros
+\input{beamerug-macros}
+
+%% Maths
+\usepackage{amssymb,amsmath}
+% \usepackage{algorithm,algpseudocode}
+% \usepackage{mathtools}
+% \usepackage{mathalfa}
+% \usepackage{bbm}
+% \usepackage{mathrsfs}
+% \usepackage{gensymb}
+% \input m.macros
+% \input m.symbols
+
+%% Other typsetting
+% \usepackage{booktabs}       % professional-quality tables
+% \usepackage{nicefrac}       % compact symbols for 1/2, etc.
+% \usepackage{enumerate}
+
+%% Graphics
+% \usepackage{graphicx,tikz}
+% \usetikzlibrary{positioning}
+% \usetikzlibrary{fit}
+% \usetikzlibrary{calc}
+
+%% Floats
+% \usepackage{wrapfig}
+
+%% Margin bubbles
+% \usepackage{mbubble}
+% \mbubblestyle{ms}{font=\tiny,label=ms,color=blue}
+% \newcommand{\comment}[1]{}
+
+%% Sections
+% \usepackage{titlesec} % format section titles
+% \titleformat{command}[shape]{format}{label}{sep}{before-code}[after-code]
+
+% \usepackage{caption,subcaption}
+% \DeclareCaptionSubType[Alph]{figure}
+% \captionsetup[subfigure]{labelformat=simple,labelfont={sf,bf,large},textfont={sf}}
+% \renewcommand{\thesubfigure}{{\sffamily\alph{subfigure}}}
+
+%% Spacing
+% \usepackage[doublespacing]{setspace}
+% \parindent 0pt
+% \parskip 1ex
+
+%% Citations, refs, hyperlinks
+% \usepackage[colorlinks=true, allcolors=blue]{hyperref}
+% \usepackage{natbib}
+\usepackage[capitalize]{cleveref}
+% \crefname{equation}{}{}
+% \crefname{Equation}{Equation}{Equations}
+
+
+
+%% Title
+
+\title{Enhanced \beamer\ increments:\\
+the \texttt{beamincr} package}
+\author{Maneesh Sahani}
+\date{\today}
+% \usepackage{filemod} % access to file modification times
+% \date{\Filemodtoday{\jobname}}  % replace \jobname if compiling from wrapper
+
+% \usepackage{titling} % modify title(page) appearance
+%\pretitle{\begin{center}\LARGE}
+%\posttitle{\par\end{center}\vskip 0.5em}
+%\preauthor{\begin{center} \large \lineskip 0.5em \begin{tabular}[t]{c}}
+%\postauthor{\end{tabular}\par\end{center}}
+%\predate{\begin{center}\large}
+%\postdate{\par\end{center}}
+
+
+
+%% Document
+
+
+\begin{document}
+
+\maketitle
+
+\noindent
+The \beamer\ class provides a number of powerful mechanisms to compose
+and control ``overlays'' or ``animations,'' where a single complex
+slide is built up (or changed) piece by piece.
+%
+While powerful, these mechanisms may sometimes be usefully extended.  This
+package provides some such enhancements.
+
+\section{Background: overlays and increments}
+
+The basic \beamer\ display unit is the \texttt{frame}.  A
+frame may be rendered step-by-step, in which case the individual
+versions of the frame are called ``overlays'' or ``slides''.  We will
+use these terms interchangeably.
+%
+\beamer\ allows you to place material on an arbitrary slide in a frame like this
+\example
+\begin{verbatim}
+\begin{frame}
+  text on slides 1 and up\\
+  \onslide<2->
+  text on slides 2 and up\\
+  \onslide<3-4>{
+  text only on slides 3 and 4\\
+  } 
+  \only<5>{text only on slide 5\\}
+  more text on slides 2 and up\\
+\end{frame}
+\end{verbatim}
+You can read about the differences between \myprintcommand{onslide}
+and \myprintcommand{only}, and the many other overlay-sensitive
+commands, in the \beamer\ user guide.  Note in particular the
+difference between the argument form and the declaration forms of
+\myprintcommand{onslide}.  \myprintcommand{only} only works with an
+argument.
+
+This explicit numbering approach becomes burdensome when you want many overlays.
+You have to keep track of the numbers explicitly, and if you subsequently add a
+step early in the sequence you need to re-number the rest.  Thus, \beamer\ also
+provides an incremental overlay specification.  The following code will produce
+the same effect as that above.  \example
+\begin{verbatim}
+\begin{frame}
+  \resetincr % not standard BEAMER
+  text on slides 1+\\
+  \onslide<+->
+  text on slides 2+\\
+  \onslide<+-+(1)>{ % increments counter by 1, despite the two +s
+  text only on slides 3-4\\
+  } 
+  \onslide<+>{} % increment counter by another
+  \only<+>{text only on slide 5\\}
+  more text on slides 2+\\
+\end{frame}
+\end{verbatim}
+This form allows easy automation using default overlay
+specificiations.  For instance (from the \beamer\ user guide)
+\example
+\begin{verbatim}
+\begin{itemize}[<+-| alert@+>]
+\item Apple
+\item Peach
+\item Plum
+\item Orange
+\end{itemize}
+\end{verbatim}
+There are important and sometimes not-entirely-intuitive differences between the
+incremental and explicit numbering systems.  So we will refer to the steps
+implied in this way as ``increments''.  They will mostly match slide numbers,
+but not always, as this example shows: \example
+\begin{verbatim}
+\begin{frame}
+  \resetincr % not standard BEAMER
+  text on slide 1+\\
+  \onslide<3>{text on slide 3}\\
+  text on slide 1+\\
+  \onslide<+->
+  text on slide 2+\\
+  \onslide<4->
+  text on slide 4+\\ % increment number is still 2!
+  \onslide<+->
+  text on slide 3+\\
+\end{frame}
+\end{verbatim}
+The increments have their own internal logic (specifically, their own internal
+counter) which is not affected by any explicit slide specifications that may
+appear in-between incremental calls.  It may make sense to think of the
+increment number as being associated with \emph{where} in the source file the
+material appears, rather than (necessarily) on \emph{which slide} it appears.
+
+There are a couple of oddities with the way increments work that often trip up
+first-time users.  There are also some extensions that would be nice, like the
+ability to refer to a specific increment elsewhere in the frame.  These things
+are certainly possible in stock \beamer, but take some digging into internals.
+The tools here make things a bit easier.
+
+As an aside, \beamer\ has another incremental overlay system based on the
+|\pause| command.  The |\pause| command uses the same counter as increments, but
+inteprets it slightly differently. This difference is discussed in 
+\cref{sec:internals}. As a result, the two sets of specifications don't play very
+well together, at least from the viewpoint of non-experts.  More on this below.
+I strongly suggest avoiding \myprintcommand{pause} entirely.
+
+
+\section{Setting increments}\label{sec:setting}
+
+\begin{command}{\resetincr\oarg{incr}}
+  This command resets the increment number to 1, or to the value defined by
+  \meta{incr} if given.  It doesn't directly affect the slide on which
+  subsequent text appears, but it does change effect of subsequent |<+>| or
+  |<.>| increments.  The command may be useful to synchronise overlays in (say)
+  two columns or between highlighted bullet points and highlighting in a figure.
+  \example
+\begin{verbatim}
+\begin{frame}
+  \resetincr
+  \begin{center}
+    Two lists \onslide<+->{in sync}
+  \end{center}
+  \begin{columns}
+    \begin{column}{.2\textwidth}
+      \begin{itemize}[<+-| alert@+>]
+      \item Apple \item Peach \item Plum \item Orange
+      \end{itemize}
+    \end{column}
+    \begin{column}{.2\textwidth}
+      \resetincr[2] % restart the increment counter to sync
+      \begin{itemize}[<+-| alert@+>]
+      \item green \item peach \item purple \item orange
+      \end{itemize}
+    \end{column}
+  \end{columns}
+\end{frame}
+\end{verbatim}
+The argument \meta{incr} must either be a number or be an increment
+specification enclosed in |/ /| (these are defined in \cref{sec:labels}).  It cannot specify any
+sort of range, or be |+| or |.|, although |/./| and things like |/.(2)/| are
+allowed.
+
+It is useful to call |\resetincr| at the start of every increment-based slide
+(as we have in the examples here).  This avoids some potentially confusing
+behaviour that comes from the way the increment counter is implemented in
+\beamer:
+\example
+\begin{verbatim}
+\begin{frame}
+  text on slides 1-\\
+  \onslide<+->
+  text still on slides 1-\\
+  \onslide<+->
+  text on slides 2-
+  \resetincr\onslide<.->
+  text on slides 1-\\
+  \onslide<+->
+  text on slides 2-
+\end{frame}
+\end{verbatim}
+The first call to |\onslide<+->| doesn't advance the slide, unless it has been
+preceded by a |\resetincr| (or another |\onslide<+->| or a |\pause|).
+\end{command}
+
+\begin{command}{\fromincr\sarg{incr}}
+  This is shorthand for
+\begin{verbatim}
+\resetincr[incr]
+\onslide<.->
+\end{verbatim}
+It can only be used as a declaration (not with an argument).  The restrictions
+on \meta{incr} are the same as above.  
+\end{command}
+
+
+\section{Labelling and referring to increments}\label{sec:labels}
+
+In complicated frames, it may be useful to name certain increments for later
+reference.  For instance, one might want to change a figure at certain steps
+while progressing through a list of bullet points.  Or one might want to
+redisplay certain slides in the frame with |\afterframe| or |\handoutframe|
+(described below).
+
+\begin{command}{\incrlabel \marg{label}}
+  This command attaches the current increment number to the label \meta{label}.
+  Once defined, the labelled increment can be recovered in (almost) any overlay
+  spec using the constructs discussed below.  The \meta{label} can contain most
+  characters, but should not start with a `|.|'  or `|!|'.
+\end{command}
+
+\begin{command}{\incrref \marg{incr spec}}
+  This command returns the increment number defined by increment specification
+  \meta{incr spec} as described below.
+\end{command}
+
+\noindent
+The general form of an increment specification is
+\begin{command}{{increment specification}: label\opt{[(offset)]}}
+  The label can be a string assigned by a call to |\incrlabel|, or the special
+  label `|.|' which refers to the current increment (this is subtly different to
+  the incremental overlay specification `|.|').  The \meta{offset}, if given, is
+  added to the increment indicated by the label.  It can be negative.
+
+  Increment specifications can be used as part of almost any overlay
+  specification by enclosing them with slashes, e.g. |</mylabel(2)/>|.
+\end{command}
+
+An example:
+\example
+\begin{verbatim}
+\begin{frame}[label=twolists]
+  \resetincr
+  \begin{center}
+    Two lists \onslide<+->{in sync}\\
+    \onslide<+->{with more material\\}
+    \onslide<+->{at the top}
+  \end{center}
+  \begin{columns}
+    \begin{column}{.2\textwidth}
+      \incrlabel{startlist}%
+      \begin{itemize}[<+-| alert@+>]
+      \item Apple \item Peach \incrlabel{halfway} \item Plum \item Orange
+      \end{itemize}
+    \end{column}
+    \begin{column}{.2\textwidth}
+      \resetincr[/startlist/]% keep in sync, even if we add extra topmatter
+      \begin{itemize}[<+-| alert@+>]
+      \item green \item peach \item purple \item orange
+      \end{itemize}
+    \end{column}
+  \end{columns}
+  \vfill
+  \onslide<+->
+  The final increment is \incrref{.}. 
+  \incrlabel{end}
+\end{frame}
+\end{verbatim}
+
+Note that of commands discussed here, |\incrref| expects an increment
+specification (i.e. |label(offset)|), while |\fromincr| and |\resetincr| expect
+a restricted overlay specification that might include an increment specification
+(e.g. |/label(offset)/|) or just a number.  Standard overlay-aware commands
+should all accept overlay specifications that include increment specs.
+
+One \beamer\ command (slightly patched in this package) with which named
+increments are particularly useful is |\againframe|.  So \example
+\begin{verbatim}
+  \againframe<1,/halfway/,/end(-1)/-/end/>{twolists}
+\end{verbatim}
+provides an abbreviated tour of the lists.  Increment labels are associated with
+the label of the enclosing frame, and so the same names can safely be reused
+across multiple named frames.
+
+There is also a similar, but new, command to render more than one overlay from a
+frame in \texttt{handout} or \texttt{trans} modes (which, by default, just show
+a single slide with all the overlays collapsed).
+\begin{command}{\handoutframe\oarg{mode spec}\sarg{overlay specification}\marg{frame label}}
+  This command only produces output when compiled in \meta{mode spec} (which
+  defaults to \texttt{handout}, but can include more than one, e.g.,
+  \texttt{beamer$\mid$handout}, in which case it renders the specified overlays from frame.
+  If \meta{overlay specification} is omitted, all overlays are rendered.  The
+  code works by switching temporarily to presentation mode as that seems to be
+  the only way to produce more than one overlay per frame in \texttt{handout},
+  \texttt{trans} and \texttt{article} modes, although this means it may behave
+  poorly with any mode-specific material within the frame.  The idea is from
+  \url{https://tex.stackexchange.com/questions/455444/beamer-overlays-and-handout-exclude-frames-from-handout/455459#455459}.
+
+  Note that the ideal usage isn't (yet) possible.  The code
+  \example
+\begin{verbatim}
+\begin{frame}<handout:0>[label=twolists]
+  ...
+\end{frame}
+\handoutframe<1,/halfway/,/done/>{twolists}
+\end{verbatim}
+fails in \texttt{handout} mode, because the |<handout:0>| spec stops the
+increment labels from being defined.  For the time being, only numeric slide
+specifications are supported for this use.  I will try to fix this.
+\end{command}
+
+
+
+\section{\AmSTeX\ align environments}
+
+The \texttt{align} and \texttt{align*} environments from the \texttt{amsmath}
+package are useful for multiple or multiline equations, but don't really work
+well with \beamer.  The current package introduces a partial fix for this,
+although their are remaining fragilities that may need to be worked around.  It
+should be straightforward to extend the approach used here to other
+\texttt{amsmath} equation environments if desired.
+
+
+\begin{environment}{{incralign[*]}\opt{\texttt{[<}\meta{spec1}\texttt{>\&<}\meta{spec2}\texttt{>\& ...]}}}
+    Pre-process the input to |align[*]| to place an |\onslide<>{}| command
+    around each field, defined as the material appearing between successive |&|
+    and/or |\\| tokens.  By default, the first field on a line is called with
+    |\onslide<+->{}|, and remaining ones with |\onslide<.->{}|.  This has the
+    effect of displaying a full line at a time.  The optional argument makes it
+    possible to change this to |\onslide<spec1>|, |\onslide<spec2>|, etc.\ with
+    the sequence of specifications reset to |<spec1>| at the beginnign of every
+    line. There must be at least as many specifications given as their are
+    fields used on a single line in the environment contents.  The default
+    specification values can be changed by a calling |\incraligndefaultspec| as
+    below.
+
+    It is also possible to override the default for a single field by starting
+    it with the new specification.  This means that if the field content itself
+    starts with |<|, it needs to be protected, e.g.\ with a leading |{}|.
+
+    \example
+\begin{verbatim}
+  \begin{incralign*}[<+->&<.->&<+->&<.->] % both sides each eqns appear at once
+    x\incrlabel{x} &= y  &  1 &{}< 2 \\
+    </x/-> x^2 &= y^2  &  </x/->\resetincr[/x/] e^{i\pi} &<+->= -1 \\
+    \sum_n f(n) &\to \int f(x) dx
+  \end{incralign*}
+\end{verbatim}
+    
+    The pre-processor is not able to distinguish between the |&| alignment
+    characters that apply to the containing environment and any that appear
+    within (e.g.) enclosed |array| environments.  So any such environments need
+    to be protected as below.  Note that it is still possible to add increments
+    within them, which are processed sequentially with those in the wrapper,
+    respecting increment labels, resets etc.\footnote{I have tried to find a way
+      to use a specification like |</!mat/->| to both select and reset an
+      increment in the manner of \texttt{fromincr}, but thus far this has eluded my
+      \LaTeX\ hacking skills}
+
+    \example
+\begin{verbatim}
+  \newtoks\mymatrix
+  (increment at this line = \incrref{.})\\
+  \mymatrix={\begin{pmatrix} 1 & 2 \\ \alt<+->{3}{2} & 4 \\ \end{pmatrix}}
+  \begin{incralign}
+    \incrlabel{mat}\the\mymatrix \resetincr[/mat/]& \text{is \only<+->{not }singular}
+  \end{incralign}
+\end{verbatim}
+    It may be wise to put the |\newtoks| declaration outside the frame so as not
+    to consume more of \TeX's resources than needed.  Also note that equation
+    numbers aren't currently overlay aware.
+
+    The current version does not support use of |\intertext|, but I hope to fix this.
+\end{environment}
+
+
+
+\begin{command}{\makealignincremental}
+  Make all subsequent uses of the \texttt{align} and \texttt{align*}
+  environments automatically incremental.  The original (non-incremental) forms
+  are available as \texttt{amsalign[*]}.
+\end{command}
+
+\begin{command}{\makealignams}
+  Make all subsequent uses of the \texttt{align} and \texttt{align*} invoke
+  their original non-incremental forms.  
+\end{command}
+
+\begin{command}{\incraligndefaultspec\oarg{new default}}
+  With the optional arg, change the default overlay specification for subsequent
+  \texttt{incralign[*]} environments (and \texttt{align[*]} if
+  |\makealignincremental| has been called).  Without the optional arg this
+  restores the package default value which is
+  |<+->&<.->&<.->&<.->&<.->&<.->&<.->&<.->|.
+\end{command}
+
+
+
+
+
+
+
+
+
+\section{Misc helper functions}\label{sec:helper}
+
+These functions may prove useful under some circumstances, particularly when
+implementing further extensions.
+
+\begin{command}{\parseincrrefspec \marg{overlay spec}}
+  Interpret any text enclosed in |/|s within \meta{overlay spec} as an increment
+  specification, replacing them with the corresponding numerical values.
+  \example
+\begin{verbatim}
+\begin{frame}
+  \resetincr[2]
+  \incrlabel{two}
+  \parseincrrefspec{/two/-/two(3)/} % prints 2-5
+\end{frame}
+\end{verbatim}
+  
+\end{command}
+
+
+
+
+\section{Internals}\label{sec:internals}
+
+These sections discuss more background and some implementation details.   This
+is only likely to be of interest to users who wish to extend the approach.
+
+\subsection{Pauses and increments}
+
+Both |\pause| and incremental overlay specifications access the same underlying
+counter called |beamerpauses|, but they use them in different ways.
+
+\begin{command}{\pause}
+  increments |beamerpauses| and then sets subsequent material on the slide
+  given by the incremented |\value{beamerpauses}|. 
+\end{command}
+
+\begin{command}{\onslide<+->}
+  increments |beamerpauses| but then sets subsequent (or argument) material on
+  the slide corresponding to the \emph{previous} value of |beamerpauses|.
+\end{command}
+
+\begin{command}{\onslide<.->}
+  leaves |beamerpauses| alone, but sets subsequent (or argument) material on the
+  slide given by |\value{beamerpauses}-1|, unless |\value{beamerpauses}=1| in
+  which case it puts subsequent material on slide 1.
+\end{command}
+
+This conflict in interpretation of the |beamerpauses| counter can cause
+unintuitive effects.  The incremental specfication model is far more flexible
+and powerful, and so the commands of this package can all be interpreted in
+terms of an \emph{increment number} which equals
+|max(\value{beamerpauses}-1,1)|.  In fact, they all use the |beamerpauses|
+counter with this offset.  Thus, when commands like |\resetincr| set the
+increment value, they set |beamerpauses| to the increment + 1.  This value then
+behaves sensibly with |<+>| etc.\ specifications, but not with |\pause|.  
+
+
+
+
+
+  % for reference with \slideref{foo} (and/or </foo/>).
+%
+% The "increment number" is defined by the use of \pause and relative
+% overlay commands like \onslide<+->.  In general, it corresponds to the slide
+% on which text that followed the most recent <+> increment would
+% appear.  For technical reasons this is one less than the value of the
+% beamerpauses counter (unless that counter is 1).  This can cause confusion if
+% \pause and <+> constructs are mixed.  
+
+% the internal label name includes the frame label if one is given -- this helps
+% to keep the references valid across frames
+
+
+
+% \bibliographystyle{apalike} 
+% \bibliography{journalsabbrv,neuro,learning}
+
+\end{document}
+
+% Local Variables:
+% mode: latex
+% eval: (set-fill-column 80)
+% End:

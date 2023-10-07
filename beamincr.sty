@@ -1,0 +1,391 @@
+% beamincr.sty
+% enhancements to beamer increment handling
+
+%% Reset relative slide / increment counter
+%% \fromslide<n>
+% effect is the same as \onslide<n-> BUT beamerpauses is reset so
+% that subsequent incremental overlays are relative to n
+% \fromslide<2>
+% text on slide 2
+% \onslide<+->
+% text on slide 3
+% this is almost the same as \pause{n} but internally sets beamerpauses to max(1,n-1)
+% to work well with <+> incremental refs.
+
+\RequirePackage{etoolbox} % beamer uses this anyway
+\let\x@=\expandafter
+
+\newcommand\resetincr[1][1]{%
+  \@resetincr{\parseincrrefspec{#1}}%
+}
+\def\@resetincr#1{%
+% etoolbox version -- local?
+  \global\defcounter{beamerpauses}{#1+1}%
+%  \c@beamerpauses=\numexpr#1+1\relax%
+%  \setcounter{beamerpauses}{\numexpr#1+1\relax}%
+%  \stepcounter{beamerpauses}%
+  \message{(@resetincr: |#1|)}%
+}
+
+  
+\def\fromincr<#1>{%
+  \resetincr[#1]%
+  \onslide<.->\relax%
+}
+
+%% use names to refer to (relative) overlays / increments
+
+% relative overlay numbering makes modifying and later inserting overlays easy,
+% but can make it hard to reference specific slides (e.g. in another part of the
+% frame, such as when coordinating text and a tikz figure; or in constructs like
+% \againframe).  
+
+% \incrlabel{foo} save the current "increment number" in the label 'foo'
+% for reference with \incrref{foo} (and/or </foo/>).
+
+% The "increment number" is defined by the use of \pause and relative
+% overlay commands like \onslide<+->.  In general, it corresponds to
+% the slide on which text that follows a <.> increment would appear.
+% For technical reasons this is one less than the value of the
+% beamerpauses counter (unless that counter is 1).  This can cause
+% confusion if \pause and <+> constructs are mixed.
+
+% the internal label name includes the frame label if one is given -- this helps
+% to keep the references valid across frames
+
+%% current increment = max(1,\value{beamerpauses}-1) as a numeric value
+\newcommand\@currentincr{%
+  \ifnum 1 < \c@beamerpauses%
+    \number\numexpr\c@beamerpauses - 1\relax%
+  \else%
+    \thebeamerpauses%
+  \fi%
+}
+
+%% \incrlabel{label}
+\newcommand\incrlabel[1]{%
+  \@incrlabel{\beamer@againname}{#1}
+}
+\newcommand\@incrlabel[2]{%
+  \x@\x@\x@\xdef\x@\csname beamincr@#1@#2\endcsname{\@currentincr}%
+}
+
+
+%% \incrref{label}
+% give the incr number associated with label in the current frame as printable text.
+%% \incrref[framename]{label}
+% references a different frame
+%% \incrref{label(offset)}
+% adds a numerical offset.  The offset can be negative.
+
+% The tricky part is the optional offset.  The idea is to use a helper function
+% to call the main parser (\def'd to expect parens) with trailing ().  If there
+% were parens in the label, the parser will see them first, and use
+% \@gobbleparens to throw away the trailing ones (and any text between the real
+% ones and the trailers).  If not, the parser sees an empty arg between the
+% parens and knows to ignore it.
+
+\newcommand\incrref[2][\beamer@againname]{%
+  \@incrref[#1]#2()%
+}
+\def\@incrref[#1]#2(#3){%
+  \@ifempty{#3}%
+           {\@@incrref[#1]#2(0)}%
+           {\@@incrref[#1]#2(#3)\@gobbleparens}%
+}
+\def\@@incrref[#1]#2(#3){%
+  \if.#2% this breaks if the incrlabel is .foo.  fixes all seem to
+        % require additional packages
+    \number \numexpr \@currentincr + #3\relax%
+  \else%
+    \@ifundefined{beamincr@#1@#2}%
+                 {\PackageError{beamincr}{No label "#2" in frame "#1"}{}}%
+                 {\number \numexpr \x@\csname beamincr@#1@#2\endcsname + #3\relax}%
+  \fi%
+}
+\def\@gobbleparens#1(){}
+  
+
+%% parse overlay spec with incrlabel refs
+% \parseincrrefspec{spec} replaces incr labels within // chars with the
+% corresponding values returned by \incrref.
+
+% Again, we use a helper function that adds empty // chars to terminate the
+% parser.  In this case we keep going until we hit the terminal //.
+
+% The 'bang' commands aren't used.  They were an attempt to implement
+% a notation like </!foo/> to reset the increment counter to /foo/.
+% They work with \parseincrrefspec alone, but but I can't find a way
+% to get the setcounter commands out through the beamer wrapper.
+
+\def\parseincrrefspec#1{%
+  \@parseincrrefspec#1//%
+}
+\def\@parseincrrefspec#1/#2/{%
+  #1%
+  \@ifempty{#2}{}{% if empty we're done, else:
+%    \@incrref[\beamer@againname]#2()% resolve this ref
+     \@parseincrrefspec@checkbang#2!!% use this instead for /!foo/
+    \@parseincrrefspec% keep going
+  }%
+}
+
+\def\@parseincrrefspec@checkbang#1!#2!{%
+  \@ifempty{#1}% first char of incrspec was !
+    {\@parseincrrefspec@bang{#2}\@gobblebang}%
+    {\@parseincrrefspec@nobang{#1}}%
+}
+\def\@gobblebang#1!{}
+
+% \newcount\incr@result
+\def\@parseincrrefspec@bang#1{%
+  % \incr@result=\@incrref[\beamer@againname]#1()%
+  % \message{bang: |#1| = |\@incrref[\beamer@againname]#1()| = |\the\incr@result|}%
+  \@resetincr{\@incrref[\csname beamer@againname\endcsname]#1()}%
+  \@incrref[\beamer@againname]#1()%
+}
+\def\@parseincrrefspec@nobang#1{%
+  \@incrref[\beamer@againname]#1()%
+}
+  
+%% refer to names within overlay specs
+% \fromincr<3> \incrlabel{myslide}
+% \onslide<+->n
+% this on slide 4-
+% \onslide</myincr/->
+% this on slide \incrref{myname}- [3-]
+
+% this involves some minor hackery: the idea is to redefine the macro
+% \beamer@masterdecode (which seems to be the top level call to parse overlay
+% specs) to first parse the incr refs and then call beamer's original parser.
+
+% save the original beamer overlay processor
+\let\beamer@masterdecode@orig=\beamer@masterdecode
+% now replace it, calling the old one
+\def\beamer@masterdecode#1{%
+  \edef\parsed@spec{\parseincrrefspec{#1}}%
+  \message{masterdecode: #1 -> (\parsed@spec)^^J}%
+  \beamer@masterdecode@orig{\parsed@spec}%
+}%
+
+% \againframe seems to need special treatment
+\let\beamer@againframe@orig=\beamer@againframe
+\def\beamer@againframe<#1>{\beamer@againframe@orig<\parseincrrefspec{#1}>}
+
+
+%% Access the *contents* of a previously defined frame.  Allows more fine-grained access, changes etc.
+\newcommand{\againframebody}[1]{%
+  \@ifundefined{beamer@again@#1}%
+  {\ClassError{beamer}{No frame has been designated to resume under
+      the name "#1"}{}}%
+  \x@\csname beamer@again@#1\endcsname%
+}
+
+%% Run a frame again, with new title.  Original definition MUST use \frametitle (not an arg to \begin{frame})
+% \begin{frame}[label=foo]\frametitle{first title}\end{frame}
+% \againframeretitle{foo}{second title}
+% The new title will overwrite the stored one, and appear in subsequent calls to
+% \againframe
+
+\def\againframeretitle{\@ifnextchar<{\beamer@againframeretitle}{\beamer@againframeretitle<*>}}
+\def\beamer@againframeretitle<#1>{\@ifnextchar[{\beamer@@againframeretitle<#1>}{\beamer@@againframeretitle<#1>[]}}
+\def\beamer@@againframeretitle<#1>[{\@ifnextchar<{\beamer@@@@againframeretitle<#1>[}{\beamer@@@againframeretitle<#1>[<*>][}}
+\def\beamer@@@@againframeretitle<#1>[#2]{\@ifnextchar[{\beamer@@@againframeretitle<#1>[{#2}]}{\beamer@@@againframeretitle<#1>[{#2}][]}}
+\def\beamer@@@againframeretitle<#1>[#2][#3]#4#5{%
+  \@ifundefined{beamer@again@#4}%
+  {\ClassError{beamer}{No frame has been designated to resume under
+      the name "#4"}{}}%
+  {%
+  \def\beamer@temp{\begin{frame}<\parseincrrefspec{#1}>[#2][{#3},relabel=#4]{}{}}%
+  \x@\let\x@\beamer@templet\csname beamer@again@#4\endcsname%
+  \x@\beamer@temp\beamer@templet\frametitle{#5}\end{frame}}%
+}
+
+
+%% Show specific overlay stage(s) in handout.
+
+% The handout and trans modes usually "flatten" all the overlays of a
+% frame.  This may not be desirable, for example when text has been
+% replaced, rather than augmented.  \handoutframe is a wrapper
+% to \againframe that only runs in handout mode, and temporarily
+% switches to presentation mode to allow specific frames to be
+% rendered as they would be onscreen.  With optional argument, does
+% the same for other modes (e.g. trans).
+
+% Example:
+% \begin{frame}<handout:0>[label=complexframe]complex stuff\end{frame}
+% \handoutframe<2,5-6>{complexframe}
+
+% Idea from:
+% https://tex.stackexchange.com/questions/455444/beamer-overlays-and-handout-exclude-frames-from-handout/455459#455459
+% but a different interface.
+
+\newcommand\handoutframe[1][handout]{
+  \@ifnextchar<%
+    {\handoutframe@[#1]}%
+    {\handoutframe@[#1]<1->}%
+}
+\def\handoutframe@[#1]<#2>#3{
+  \mode<#1>{%
+%    grouping seems to be enough, but also possible to explicitly save
+%    and restore current mode if necessary.
+%    \edef\save@currentmode{\beamer@currentmode}
+    \begingroup
+    \def\beamer@currentmode{beamer}%
+    \againframe<#2>{#3}%
+    \endgroup
+%    \edef\beamer@currentmode{\save@currentmode}%
+  }%
+}
+
+
+
+%% 
+%% a rudimentary increment-aware align environment
+%%
+
+%% user-facing commands
+\newenvironment{incralign}{\collect@body\@incralign@nostar}{\ignorespacesafterend}
+\newenvironment{incralign@star}{\collect@body\@incralign@star}{\ignorespacesafterend}
+
+% make * version accessible
+\cslet{incralign*}\incralign@star
+\cslet{endincralign*}\endincralign@star
+
+% remember the old ones
+\let\amsalign=\align%
+\let\endamsalign=\endalign
+\letcs\amsalign@star{align*}
+% note: \end{align*} just calls \endalign: we need to ensure this is
+% the ams version even after \makealignincremental
+\let\endamsalign@star=\endamsalign
+\cslet{amsalign*}\amsalign@star
+\cslet{endamsalign*}\endamsalign@star
+
+\def\makealignincremental{%
+  \gdef\align{\incralign}%
+  \gdef\endalign{\endincralign}%
+  \csgdef{align*}{\incralign@star}%
+  \csgdef{endalign*}{\endincralign@star}%
+}
+\def\makealignams{%
+  \gdef\align{\amsalign}%
+  \gdef\endalign{\endamsalign}%
+  \csgdef{align*}{\amsalign@star}%
+}
+
+
+% default increment spec               
+\newcommand\incraligndefaultspec[1][<+->&<.->&<.->&<.->&<.->&<.->&<.->&<.->]{%
+  \gdef\@incralign@defaultspec{#1}%
+}
+\incraligndefaultspec
+
+
+%% the rest is internal
+
+% token register to collect the processed toks               
+\newtoks\@incraligntoks
+
+% change category of X to other, so it can be used to terminate arguments
+\catcode`X=12
+
+% process body of environment
+\def\@incralign@nostar#1{\@incralign[amsalign]{#1}}
+\def\@incralign@star#1{\@incralign[amsalign@star]{#1}}
+\def\@incralign[#1]#2{%
+  \@incraligntoks={}% clear processed token list
+  \message{send to process@line: \unexpanded{#2}\\X^^J}%
+  \@incralign@opt#2\\X% process raw body token by token (\\ added to last line wiill be removed)
+  \message{send to #1: \the\@incraligntoks^^J}%
+  \begin{#1}% pass tokens to align
+    \the\@incraligntoks
+  \end{#1}%
+}
+
+% use the default spec if optional arg absent
+\def\@incralign@opt{%
+  \@ifnextchar[%
+    {\@incralign@process@line}%
+    {\x@\@incralign@process@line\x@[\@incralign@defaultspec]}% 
+}
+  
+% process a line
+% #1: increment spec
+% #2: this line
+% #3: remaining lines  
+\def\@incralign@process@line[#1]#2\\#3X{%
+%  \message{process@line: spec #1| line: #2 | remaining body: #3^^J}%
+  \@ifempty{#2}{}% done processing all lines
+  {% insert & at the end of the line
+     \@incralign@process@field[#1]#1&X#2&\\#3X%
+  }%
+}
+
+% process next field
+% #1: full spec
+% #2: spec to next &
+% #3: remaining spec
+% #4: remaning body
+\def\@incralign@process@field[#1]#2&#3X#4X{%
+%  \message{process@field:  spec: #2 | remaining spec: #3 | remaining body: #4^^J}%
+  \@ifempty{#3}% <spec>&X is the last field
+           {\@incralign@field@opt\@incraligntobreak}%
+           {\@incralign@field@opt\@incraligntoamp}%
+           [#1][#2][#3]#4X%
+}
+
+% check for overlay spec within the field
+% #1: command to execute on field
+% #2: full spec
+% #3: spec for this field
+% #4: remaining spec
+\def\@incralign@field@opt#1[#2][#3][#4]{%
+%  \message{incraligntoamp@opt: spec: #3 | remain spec: #4^^J}%
+  \@ifnextchar<%input starts with overlay spec char
+    {#1[#2][#4]}%
+    {#1[#2][#4]#3}%
+}
+
+% process non-final field teminated by &
+% #1: full spec
+% #2: remaining spec
+% #3: spec for this field
+% #4: field contents
+% #5: remaining line
+% #6: remaining body
+\def\@incraligntoamp[#1][#2]<#3>#4&#5\\#6X{%
+%  \message{incraligntoamp: spec:<#3> | field:(#4) | line:(#5) | remain:(#6)^^J}%
+  \@incraligntoks=\x@{\the\@incraligntoks \onslide<#3>{#4}}%
+  \@ifempty{#5}% run out of input fields before spec fields
+     {%
+        \@ifempty{#6}{}% we're done
+          {%
+            \@incraligntoks=\x@{\the\@incraligntoks \\}%
+            \@incralign@process@line[#1]#6X
+          }%
+     }%
+     {%
+        \@incraligntoks=\x@{\the\@incraligntoks &}%
+        \@incralign@process@field[#1]#2X#5\\#6X%
+     }%
+}
+% process last field terminated by \\
+% #1: full spec
+% #2: remaining spec
+% #3: spec for this field
+% #4: field contents
+% #5: remaining body
+\def\@incraligntobreak[#1][#2]<#3>#4&\\#5X{%
+  \@incraligntoks=\x@{\the\@incraligntoks \onslide<#3>{#4}}%
+  \@ifempty{#5} % done processing all lines
+  {}%
+  {\@incraligntoks=\x@{\the\@incraligntoks \\}%
+    \@incralign@process@line[#1]#5X% process next line
+  }%
+}
+
+\catcode`X=11
+
+               
+               

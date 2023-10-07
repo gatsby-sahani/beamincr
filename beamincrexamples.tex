@@ -1,0 +1,147 @@
+\documentclass[\jobname]{beamer} % use jobname="handout" for handout
+\usepackage{beamincr}
+
+\begin{document}
+
+\newcounter{exampc}
+\newenvironment{examp}
+               {\stepcounter{exampc}%
+               \begin{frame}{example \theexampc}}
+               {\end{frame}}
+
+               
+\begin{examp}
+  text on slides 1 and up\\
+  \onslide<2->
+  text on slides 2 and up\\
+  \onslide<3-4>{
+  text only on slides 3 and 4\\
+  } 
+  \only<5>{text only on slide 5\\}
+  more text on slides 2 and up\\
+\end{examp}
+
+\begin{examp}
+  \resetincr % not standard BEAMER
+  text on slides 1+\\
+  \onslide<+->
+  text on slides 2+\\
+  \onslide<+-+(1)>{ % increments counter by 1, despite the two +s
+  text only on slides 3-4\\
+  } 
+  \onslide<+>{} % increment counter by another
+  \only<+>{text only on slide 5\\}
+  more text on slides 2+\\
+\end{examp}
+
+\begin{examp}
+  \resetincr % not standard BEAMER
+  text on slide 1+\\
+  \onslide<3>{text on slide 3}\\
+  text on slide 1+\\
+  \onslide<+->
+  text on slide 2+\\
+  \onslide<4->
+  text on slide 4+\\ % increment number is still 2!
+  \onslide<+->
+  text on slide 3+\\
+\end{examp}
+
+\begin{examp}
+  \resetincr
+  \begin{center}
+    Two lists \onslide<+->{in sync}
+  \end{center}
+  \begin{columns}
+    \begin{column}{.2\textwidth}
+      \begin{itemize}[<+-| alert@+>]
+      \item Apple \item Peach \item Plum \item Orange
+      \end{itemize}
+    \end{column}
+    \begin{column}{.2\textwidth}
+      \resetincr[2]
+      \begin{itemize}[<+-| alert@+>]
+      \item green \item peach \item purple \item orange
+      \end{itemize}
+    \end{column}
+  \end{columns}
+\end{examp}
+
+
+\begin{examp}
+  text on slides 1-\\
+  \onslide<+->
+  text still on slides 1-\\
+  \onslide<+->
+  text on slides 2-\\
+  \resetincr\onslide<.->
+  text on slides 1-\\
+  \onslide<+->
+  text on slides 2-
+\end{examp}
+
+\stepcounter{exampc}
+\begin{frame}[label=twolists]{examp \theexampc}
+  \resetincr
+  \begin{center}
+    Two lists \onslide<+->{in sync}\\
+    \onslide<+->{with more material\\}
+    \onslide<+->{at the top}
+  \end{center}
+  \begin{columns}
+    \begin{column}{.2\textwidth}
+      \incrlabel{startlist}%
+      \begin{itemize}[<+-| alert@+>]
+      \item Apple \item Peach \incrlabel{halfway} \item Plum \item Orange
+      \end{itemize}
+    \end{column}
+    \begin{column}{.2\textwidth}
+      \resetincr[/startlist/]%
+      \begin{itemize}[<+-| alert@+>]
+      \item green \item peach \item purple \item orange
+      \end{itemize}
+    \end{column}
+  \end{columns}
+  \vfill
+  \onslide<+->
+  The final increment is \incrref{.}. 
+  \incrlabel{end}
+\end{frame}
+
+\againframe<1,/halfway/,/end(-1)/-/end/>{twolists}
+
+\begin{examp}
+  \resetincr[2]
+  \incrlabel{two}
+  \parseincrrefspec{/two/-/two(3)/} % prints 2-5
+\end{examp}
+
+\begin{frame}<1>[label=test]
+  \resetincr
+  \onslide<+-> \incrlabel{two}
+  2+
+  \onslide<+->
+  3+
+\end{frame}
+
+\againframe</two/>{test}
+
+\newtoks\mymatrix
+\begin{examp}
+  \resetincr
+  \begin{incralign*}[<+->&<.->&<+->&<.->&<+->&<.->] % both sides of up to 3 eqns/line appear at once
+    x\incrlabel{x} &= y & 1 &{}< 2 \\
+    </x/-> x^2 &= y^2 & </x/->\resetincr[/x/] e^{i\pi} &<+->= -1 \\
+    \sum_n f(n) &\to \int f(x) dx
+  \end{incralign*}
+
+  (increment at this line = \incrref{.})\\
+  \mymatrix={\begin{pmatrix} 1 & 2 \\ \alt<+->{3}{2} & 4 \\ \end{pmatrix}}
+  \begin{incralign}
+    \incrlabel{mat}\the\mymatrix \resetincr[/mat/] & \text{is \only<+->{not }singular}
+  \end{incralign}
+
+\end{examp}
+
+
+\end{document}
