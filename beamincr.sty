@@ -1,7 +1,7 @@
 % beamincr.sty
 % enhancements to beamer increment handling
 
-% choose the second line to get debugging messages on screen and log
+% choose the first line to get debugging messages on screen and log
 % \def\debug@message{\message}
 \def\debug@message{\@gobble}
 
@@ -155,7 +155,7 @@
 % now replace it, calling the old one
 \def\beamer@masterdecode#1{%
   \edef\parsed@spec{\parseincrrefspec{#1}}%
-  \debug@message{masterdecode: #1 -> (\parsed@spec)^^J}%
+  \debug@message{masterdecode: <#1> -> <\parsed@spec>^^J}%
   \beamer@masterdecode@orig{\parsed@spec}%
 }%
 
@@ -197,7 +197,7 @@
 
 
 %% 
-%% Show specific overlay stage(s) in handout.
+%% \handoutframe - show specific overlay stage(s) in handout.
 %%
 
 % The handout and trans modes usually "flatten" all the overlays of a
@@ -216,39 +216,55 @@
 % https://tex.stackexchange.com/questions/455444/beamer-overlays-and-handout-exclude-frames-from-handout/455459#455459
 % but a different interface.
 
-\newcommand\handoutframe[1][handout]{%
-  \@ifnextchar<%
-    {\handoutframe@[#1]}%
-    {\handoutframe@[#1]<1->}%
+% as we need to reset the mode (or end a group) after the \againframe call we
+% need to parse and pass to \againframe all potential arguments.  So we follow
+% the \againframe definition from beamer.
+\newcommand\handoutframe[1][handout]{% check for <spec>
+  \@ifnextchar<{\handoutframe@[#1]}{\handoutframe@[#1]<*>}%
 }
-\def\handoutframe@[#1]<#2>#3{
+\def\handoutframe@[#1]<#2>{% check for [opt]
+  \@ifnextchar[{\handoutframe@@[#1]<#2>}{\handoutframe@@[#1]<#2>[]}%
+}
+\def\handoutframe@@[#1]<#2>[{%check if opt is [<def>]
+  \@ifnextchar<{\handoutframe@@@[#1]<#2>[}{\handoutframe@do[#1]<#2>[<*>][}%
+}
+\def\handoutframe@@@[#1]<#2>[#3]{%read [<def>] and check for [opt]
+  \@ifnextchar[{\handoutframe@do[#1]<#2>[{#3}]}{\handoutframe@do[#1]<#2>[{#3}][]}%
+}
+\def\handoutframe@do[#1]<#2>[#3][#4]#5{%
   \mode<#1>{%
 %    grouping seems to be enough, but also possible to explicitly save
 %    and restore current mode if necessary.
 %    \edef\save@currentmode{\beamer@currentmode}
     \begingroup
     \def\beamer@currentmode{beamer}%
-    \againframe<#2>{#3}%
+    % we've parsed all the arguments, so just call the inner function
+    \beamer@@@againframe<\parseincrrefspec{#2}>[{#3}][#4]{#5}%
     \endgroup
 %    \edef\beamer@currentmode{\save@currentmode}%
   }%
 }
 
-% this command is similar to a <handout:0> argument to frame in that it
-% suppresses the frame output in [handout] mode.  But the frame is still scanned
-% and so increment labels are available for use with \handoutframe.
 
-% use string comparison here rather than \mode<> because \mode<> is expanded
-% into the frame contents and so the code would be executed even after changing
-% \beamer@currentmode
-\newcommand\handoutscanonly[1][handout]{%
-  \@ifundefined{AddToHookNext}{}{%
-    \ifnum\pdf@strcmp{\beamer@currentmode}{#1}=0\relax%
-      \AddToHookNext{shipout/before}{\DiscardShipoutBox}%
-    \fi%
+%% 
+%% \framescanonly 
+%% 
+% This command is similar to a <0> argument to \begin{frame} in that it
+% suppresses the frame output.  But the frame is still scanned and so increment
+% labels are available for use with \againframe or \handoutframe.
+
+% Protect \mode from expansion as frame scans input.   If expanded then the
+% effective mode would be frozen at first expansion, fouling \handoutframe's
+% mode switch
+\protected\def\beamincr@protected@mode{\mode}
+
+\newcommand<>\framescanonly{%
+  \beamincr@protected@mode#1{%
+    \@ifundefined{AddToHookNext}%
+      {\PackageWarning{beamincr}{\framescanonly is not supported in this LaTeX version}}%
+      {\AddToHookNext{shipout/before}{\DiscardShipoutBox}}%
   }%
 }
-
 
 
 

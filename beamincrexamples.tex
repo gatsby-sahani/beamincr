@@ -127,16 +127,16 @@
 \end{examp}
 
 \begin{frame}<2>[label=test]{example handoutframe}
-  \handoutscanonly
+  \framescanonly<handout|trans>
   \resetincr
   \incrlabel{handout}
-  \only<.>{this text only on the handout\\}
+  \only<.>{this text only on in handout mode\\}
   \onslide<+->
-  this text only on the screen\\
+  this text only in beamer mode\\
 \end{frame}
 
 % \againframe</two/>{test}
-\handoutframe</handout/>{test}
+\handoutframe[handout|trans]</handout/>{test}
 
 
 \newtoks\mymatrix

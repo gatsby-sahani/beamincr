@@ -361,49 +361,9 @@ provides an abbreviated tour of the lists.  Increment labels are associated with
 the label of the enclosing frame, and so the same names can safely be reused
 across multiple named frames.
 
-There is also a similar new command to render more than one overlay from a frame
-in \texttt{handout} or \texttt{trans} modes (which, by default, just show a
-single slide with all the overlays collapsed).
-
-\begin{command}{\handoutframe\oarg{mode spec}\sarg{overlay specification}\marg{frame label}}
-  This command only produces output when compiled in \meta{mode spec} (which
-  defaults to \texttt{handout}, but can include more than one, e.g.,
-  \texttt{beamer$\mid$handout}, in which case it renders the specified overlays from frame.
-  If \meta{overlay specification} is omitted, all overlays are rendered.  The
-  code works by switching temporarily to presentation mode as that seems to be
-  the only way to produce more than one overlay per frame in \texttt{handout},
-  \texttt{trans} and \texttt{article} modes, although this means it may behave
-  poorly with any mode-specific material within the frame.  The idea is from
-  \url{https://tex.stackexchange.com/questions/455444/beamer-overlays-and-handout-exclude-frames-from-handout/455459#455459}.
-\end{command}
-
-Unfortunately,  the natural code
-  \example
-\begin{verbatim}
-\begin{frame}<handout:0>[label=twolists]
-  ...
-\end{frame}
-\handoutframe<1,/halfway/,/done/>{twolists}
-\end{verbatim}
-fails in \texttt{handout} mode, because the |<handout:0>| spec stops the
-increment labels from being defined.  If running a recent \LaTeX\ compiler (post
-2021) the following command provides a workaround.
-\begin{command}{\handoutscanonly\oarg{mode}}
-  Scan the current frame without producing any output.  The command should be
-  placed in the frame contents.  The \meta{mode} must be a single basic mode
-  name (like \texttt{handout}, \texttt{trans} or \texttt{beamer}).  It cannot
-  specify multiple modes or super-modes such as \texttt{all}. However, multiple
-  |\handoutscanonly| commands can be issued.
-\example
-\begin{verbatim}
-\begin{frame}[label=twolists]
-  \handoutscanonly%
-  ...
-\end{frame}
-\handoutframe<1,/halfway/,/done/>{twolists}
-\end{verbatim}
-\end{command}
-
+There is also a similar new command called |\handoutframe| to render more than
+one overlay from a frame in \texttt{handout} or similar modes that, by default,
+just show a single slide with all the overlays collapsed.  See \cref{sec:helper}.
 
 
 \section{\AmSTeX\ align environments}
@@ -505,8 +465,55 @@ should be straightforward to extend the approach used here to other
 
 \section{Misc helper functions}\label{sec:helper}
 
-These functions may prove useful under some circumstances, particularly when
-implementing further extensions.
+These functions may prove useful under some circumstances.
+
+\begin{command}{\handoutframe\oarg{mode spec}\sarg{overlay specification}\marg{frame label}}
+  This command only produces output when compiled in \meta{mode spec} (which
+  defaults to \texttt{handout}, but can include more than one, e.g.,
+  \texttt{beamer$\mid$handout}, in which case it renders the specified overlays from frame.
+  If \meta{overlay specification} is omitted, all overlays are rendered.  The
+  code works by switching temporarily to presentation mode as that seems to be
+  the only way to produce more than one overlay per frame in \texttt{handout},
+  \texttt{trans} and \texttt{article} modes, although this means it may behave
+  poorly with any mode-specific material within the frame.  The idea is from
+  \url{https://tex.stackexchange.com/questions/455444/beamer-overlays-and-handout-exclude-frames-from-handout/455459#455459}.
+\end{command}
+
+Unfortunately,  the natural code
+\example
+\begin{verbatim}
+\begin{frame}<handout:0>[label=twolists]
+  ...
+\end{frame}
+\handoutframe<1,/halfway/,/done/>{twolists}
+\end{verbatim}
+fails in \texttt{handout} mode, because the |<handout:0>| spec stops the
+increment labels from being defined.  If running a recent \LaTeX\ compiler (post
+2021) the command |\framescanonly<handout>| described in \cref{sec:helper}
+provides a workaround.
+\example
+\begin{verbatim}
+\begin{frame}[label=twolists]
+  \framescanonly<handout|trans>%
+  ...
+\end{frame}
+\handoutframe[handout|trans]<1,/halfway/,/done/>{twolists}
+\end{verbatim}
+
+
+\begin{command}{\framescanonly\opt{\sarg{mode specification}}}
+  Scan the current frame without producing any output.  This is similar to a
+  |<mode:0>| specification to |\begin{frame}|, but as the frame is still scanned
+  it allows side effects such as increment label definitions.  This command
+  should be placed inside the frame contents.  It is only available in recent
+  versions of \LaTeX\ with hook support; a warning is printed in other cases.
+  If used in |beamer| mode the frame will be reprocessed for every overlay.
+  This behaviour can be avoided by also including a |<beamer:1>| or
+  |<beamer:-1>| (but not |<beamer:0>|!) or equivalent specification to
+  |\begin{frame}|.
+
+  An example of its use appears above.
+\end{command}
 
 \begin{command}{\parseincrrefspec \marg{overlay spec}}
   Interpret any text enclosed in |/|s within \meta{overlay spec} as an increment
