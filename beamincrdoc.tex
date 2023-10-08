@@ -515,7 +515,7 @@ defined.  If running a recent \LaTeX\ compiler (post 2021) the command
   An example of its use appears above.
 \end{command}
 
-\begin{command}{\parseincrrefspec \marg{overlay spec}}
+\begin{command}{\parseincrspec \marg{overlay spec}}
   Interpret any text enclosed in |/|s within \meta{overlay spec} as an increment
   specification, replacing them with the corresponding numerical values.
   \example
@@ -523,7 +523,7 @@ defined.  If running a recent \LaTeX\ compiler (post 2021) the command
 \begin{frame}
   \resetincr[2]
   \incrlabel{two}
-  \parseincrrefspec{/two/-/two(3)/} % prints 2-5
+  \parseincrspec{/two/-/two(3)/} % prints 2-5
 \end{frame}
 \end{verbatim}
   

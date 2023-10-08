@@ -10,7 +10,7 @@
 
 
 \newcommand\resetincr[1][1]{%
-  \@resetincr{\parseincrrefspec{#1}}%
+  \@resetincr{\parseincrspec{#1}}%
 }
 \def\@resetincr#1{%
 % etoolbox version -- local?
@@ -101,7 +101,7 @@
   
 
 %% parse overlay spec with incrlabel refs
-% \parseincrrefspec{spec} replaces incr labels within // chars with the
+% \parseincrspec{spec} replaces incr labels within // chars with the
 % corresponding values returned by \incrref.
 
 % Again, we use a helper function that adds empty // chars to terminate the
@@ -109,36 +109,36 @@
 
 % The 'bang' commands aren't used.  They were an attempt to implement
 % a notation like </!foo/> to reset the increment counter to /foo/.
-% They work with \parseincrrefspec alone, but but I can't find a way
+% They work with \parseincrspec alone, but but I can't find a way
 % to get the setcounter commands out through the beamer wrapper.
 
-\def\parseincrrefspec#1{%
-  \@parseincrrefspec#1//%
+\def\parseincrspec#1{%
+  \@parseincrspec#1//%
 }
-\def\@parseincrrefspec#1/#2/{%
+\def\@parseincrspec#1/#2/{%
   #1%
   \@ifempty{#2}{}{% if empty we're done, else:
 %    \@incrref[\beamer@againname]#2()% resolve this ref
-     \@parseincrrefspec@checkbang#2!!% use this instead for /!foo/
-    \@parseincrrefspec% keep going
+     \@parseincrspec@checkbang#2!!% use this instead for /!foo/
+    \@parseincrspec% keep going
   }%
 }
 
-\def\@parseincrrefspec@checkbang#1!#2!{%
+\def\@parseincrspec@checkbang#1!#2!{%
   \@ifempty{#1}% first char of incrspec was !
-    {\@parseincrrefspec@bang{#2}\@gobblebang}%
-    {\@parseincrrefspec@nobang{#1}}%
+    {\@parseincrspec@bang{#2}\@gobblebang}%
+    {\@parseincrspec@nobang{#1}}%
 }
 \def\@gobblebang#1!{}
 
 % \newcount\incr@result
-\def\@parseincrrefspec@bang#1{%
+\def\@parseincrspec@bang#1{%
   % \incr@result=\@incrref[\beamer@againname]#1()%
   % \debug@message{bang: |#1| = |\@incrref[\beamer@againname]#1()| = |\the\incr@result|}%
   \@resetincr{\@incrref[\csname beamer@againname\endcsname]#1()}%
   \@incrref[\beamer@againname]#1()%
 }
-\def\@parseincrrefspec@nobang#1{%
+\def\@parseincrspec@nobang#1{%
   \@incrref[\beamer@againname]#1()%
 }
 
@@ -154,14 +154,14 @@
 \let\beamer@masterdecode@orig=\beamer@masterdecode
 % now replace it, calling the old one
 \def\beamer@masterdecode#1{%
-  \edef\parsed@spec{\parseincrrefspec{#1}}%
+  \edef\parsed@spec{\parseincrspec{#1}}%
   \debug@message{masterdecode: <#1> -> <\parsed@spec>^^J}%
   \beamer@masterdecode@orig{\parsed@spec}%
 }%
 
 % \againframe seems to need special treatment
 \let\beamer@againframe@orig=\beamer@againframe
-\def\beamer@againframe<#1>{\beamer@againframe@orig<\parseincrrefspec{#1}>}
+\def\beamer@againframe<#1>{\beamer@againframe@orig<\parseincrspec{#1}>}
 
 %%
 %% \againframe variants
@@ -190,7 +190,7 @@
   {\ClassError{beamer}{No frame has been designated to resume under
       the name "#4"}{}}%
   {%
-  \def\beamer@temp{\begin{frame}<\parseincrrefspec{#1}>[#2][{#3},relabel=#4]{}{}}%
+  \def\beamer@temp{\begin{frame}<\parseincrspec{#1}>[#2][{#3},relabel=#4]{}{}}%
   \x@\let\x@\beamer@templet\csname beamer@again@#4\endcsname%
   \x@\beamer@temp\beamer@templet\frametitle{#5}\end{frame}}%
 }
@@ -239,7 +239,7 @@
     \begingroup
     \def\beamer@currentmode{beamer}%
     % we've parsed all the arguments, so just call the inner function
-    \beamer@@@againframe<\parseincrrefspec{#2}>[{#3}][#4]{#5}%
+    \beamer@@@againframe<\parseincrspec{#2}>[{#3}][#4]{#5}%
     \endgroup
 %    \edef\beamer@currentmode{\save@currentmode}%
   }%
