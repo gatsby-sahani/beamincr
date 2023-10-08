@@ -301,7 +301,7 @@ redisplay certain slides in the frame with |\afterframe| or |\handoutframe|
 
 \noindent
 The general form of an increment specification is
-\begin{command}{{increment specification}: label\opt{[(offset)]}}
+\begin{command}{{increment specification}: |label|\opt{|(offset)|}}
   The label can be a string assigned by a call to |\incrlabel|, or the special
   label `|.|' which refers to the current increment (this is subtly different to
   the incremental overlay specification `|.|').  The \meta{offset}, if given, is
@@ -370,8 +370,8 @@ just show a single slide with all the overlays collapsed.  See \cref{sec:helper}
 
 The \texttt{align} and \texttt{align*} environments from the \texttt{amsmath}
 package are useful for multiple or multiline equations, but don't really work
-well with \beamer.  The current package introduces a partial fix for this,
-although their are remaining fragilities that may need to be worked around.  It
+well with overlays.  The current package introduces a partial fix for this,
+although their are remaining fragilities that need to be worked around.  It
 should be straightforward to extend the approach used here to other
 \texttt{amsmath} equation environments if desired.
 
@@ -383,11 +383,11 @@ should be straightforward to extend the approach used here to other
     |\onslide<+->{}|, and remaining ones with |\onslide<.->{}|.  This has the
     effect of displaying a full line at a time.  The optional argument makes it
     possible to change this to |\onslide<spec1>|, |\onslide<spec2>|, etc.\ with
-    the sequence of specifications reset to |<spec1>| at the beginnign of every
+    the sequence of specifications reset to |<spec1>| at the beginning of every
     line. There must be at least as many specifications given as their are
-    fields used on a single line in the environment contents.  The default
-    specification values can be changed by a calling |\incraligndefaultspec| as
-    below.
+    fields used on the longest single line in the environment contents, but
+    lines can have fewer fields.  The default specification values can be
+    changed by a calling |\incraligndefaultspec| as below.
 
     It is also possible to override the default for a single field by starting
     it with the new specification.  This means that if the field content itself
@@ -406,10 +406,10 @@ should be straightforward to extend the approach used here to other
     The pre-processor is not able to distinguish between the |&| alignment
     characters that apply to the containing environment and any that appear
     within (e.g.) enclosed |array| environments.  So any such environments need
-    to be protected using either a token register or protected macro.  Note that
-    it is still possible to use increments within the environments, which are
-    processed sequentially with those in the wrapper, respecting increment
-    labels, resets etc.
+    to be protected using either a token register or a protected macro.  Note
+    that it is still possible to use increments within the environments. These
+    are processed sequentially with those in the containing |align| environment,
+    respecting increment labels, resets etc.
 
     \example
 \begin{verbatim}
@@ -470,12 +470,13 @@ These functions may prove useful under some circumstances.
 \begin{command}{\handoutframe\oarg{mode spec}\sarg{overlay specification}\marg{frame label}}
   This command only produces output when compiled in \meta{mode spec} (which
   defaults to \texttt{handout}, but can include more than one, e.g.,
-  \texttt{beamer$\mid$handout}, in which case it renders the specified overlays from frame.
-  If \meta{overlay specification} is omitted, all overlays are rendered.  The
-  code works by switching temporarily to presentation mode as that seems to be
-  the only way to produce more than one overlay per frame in \texttt{handout},
-  \texttt{trans} and \texttt{article} modes, although this means it may behave
-  poorly with any mode-specific material within the frame.  The idea is from
+  \texttt{[beamer$\mid$handout]}), in which case it renders the specified
+  overlays from the named frame.  If \meta{overlay specification} is omitted,
+  all the overlays are rendered.  The code works by switching temporarily to
+  \texttt{beamer} mode as that seems to be the only way to produce more than one
+  overlay per frame in \texttt{handout}, \texttt{trans} and \texttt{article}
+  modes, although this means it may behave poorly with any mode-specific
+  material within the frame.  The idea is from
   \url{https://tex.stackexchange.com/questions/455444/beamer-overlays-and-handout-exclude-frames-from-handout/455459#455459}.
 \end{command}
 
@@ -487,10 +488,9 @@ Unfortunately,  the natural code
 \end{frame}
 \handoutframe<1,/halfway/,/done/>{twolists}
 \end{verbatim}
-fails in \texttt{handout} mode, because the |<handout:0>| spec stops the
-increment labels from being defined.  If running a recent \LaTeX\ compiler (post
-2021) the command |\framescanonly<handout>| described in \cref{sec:helper}
-provides a workaround.
+fails, because the |<handout:0>| spec stops the increment labels from being
+defined.  If running a recent \LaTeX\ compiler (post 2021) the command
+|\framescanonly<handout>| described below provides a workaround.
 \example
 \begin{verbatim}
 \begin{frame}[label=twolists]
@@ -504,11 +504,11 @@ provides a workaround.
 \begin{command}{\framescanonly\opt{\sarg{mode specification}}}
   Scan the current frame without producing any output.  This is similar to a
   |<mode:0>| specification to |\begin{frame}|, but as the frame is still scanned
-  it allows side effects such as increment label definitions.  This command
-  should be placed inside the frame contents.  It is only available in recent
-  versions of \LaTeX\ with hook support; a warning is printed in other cases.
-  If used in |beamer| mode the frame will be reprocessed for every overlay.
-  This behaviour can be avoided by also including a |<beamer:1>| or
+  it allows side effects such as increment label definitions.  The |\frameonly|
+  command should be placed inside the frame contents.  It is only available in
+  recent versions of \LaTeX\ with hook support; a warning is printed in other
+  cases.  If used in |beamer| mode the frame will be reprocessed for every
+  overlay.  This behaviour can be avoided by also including a |<beamer:1>| or
   |<beamer:-1>| (but not |<beamer:0>|!) or equivalent specification to
   |\begin{frame}|.
 
