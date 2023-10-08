@@ -235,7 +235,7 @@ I strongly suggest avoiding \myprintcommand{pause} entirely.
     \begin{column}{.2\textwidth}
       \resetincr[2] % restart the increment counter to sync
       \begin{itemize}[<+-| alert@+>]
-      \item green \item peach \item purple \item orange
+      \item green \item yellow \item purple \item orange
       \end{itemize}
     \end{column}
   \end{columns}
@@ -309,6 +309,10 @@ The general form of an increment specification is
 
   Increment specifications can be used as part of almost any overlay
   specification by enclosing them with slashes, e.g. |</mylabel(2)/>|.
+  \footnote{I have tried to find a way
+      to use a specification like |</!mat/->| to both select and reset an
+      increment in the manner of \texttt{fromincr}, but thus far this has eluded my
+      \LaTeX\ hacking skills}
 \end{command}
 
 An example:
@@ -331,7 +335,7 @@ An example:
     \begin{column}{.2\textwidth}
       \resetincr[/startlist/]% keep in sync, even if we add extra topmatter
       \begin{itemize}[<+-| alert@+>]
-      \item green \item peach \item purple \item orange
+      \item green \item yellow \item purple \item orange
       \end{itemize}
     \end{column}
   \end{columns}
@@ -357,9 +361,10 @@ provides an abbreviated tour of the lists.  Increment labels are associated with
 the label of the enclosing frame, and so the same names can safely be reused
 across multiple named frames.
 
-There is also a similar, but new, command to render more than one overlay from a
-frame in \texttt{handout} or \texttt{trans} modes (which, by default, just show
-a single slide with all the overlays collapsed).
+There is also a similar new command to render more than one overlay from a frame
+in \texttt{handout} or \texttt{trans} modes (which, by default, just show a
+single slide with all the overlays collapsed).
+
 \begin{command}{\handoutframe\oarg{mode spec}\sarg{overlay specification}\marg{frame label}}
   This command only produces output when compiled in \meta{mode spec} (which
   defaults to \texttt{handout}, but can include more than one, e.g.,
@@ -370,8 +375,9 @@ a single slide with all the overlays collapsed).
   \texttt{trans} and \texttt{article} modes, although this means it may behave
   poorly with any mode-specific material within the frame.  The idea is from
   \url{https://tex.stackexchange.com/questions/455444/beamer-overlays-and-handout-exclude-frames-from-handout/455459#455459}.
+\end{command}
 
-  Note that the ideal usage isn't (yet) possible.  The code
+Unfortunately,  the natural code
   \example
 \begin{verbatim}
 \begin{frame}<handout:0>[label=twolists]
@@ -380,8 +386,22 @@ a single slide with all the overlays collapsed).
 \handoutframe<1,/halfway/,/done/>{twolists}
 \end{verbatim}
 fails in \texttt{handout} mode, because the |<handout:0>| spec stops the
-increment labels from being defined.  For the time being, only numeric slide
-specifications are supported for this use.  I will try to fix this.
+increment labels from being defined.  If running a recent \LaTeX\ compiler (post
+2021) the following command provides a workaround.
+\begin{command}{\handoutscanonly\oarg{mode}}
+  Scan the current frame without producing any output.  The command should be
+  placed in the frame contents.  The \meta{mode} must be a single basic mode
+  name (like \texttt{handout}, \texttt{trans} or \texttt{beamer}).  It cannot
+  specify multiple modes or super-modes such as \texttt{all}. However, multiple
+  |\handoutscanonly| commands can be issued.
+\example
+\begin{verbatim}
+\begin{frame}[label=twolists]
+  \handoutscanonly%
+  ...
+\end{frame}
+\handoutframe<1,/halfway/,/done/>{twolists}
+\end{verbatim}
 \end{command}
 
 
@@ -420,26 +440,32 @@ should be straightforward to extend the approach used here to other
     </x/-> x^2 &= y^2  &  </x/->\resetincr[/x/] e^{i\pi} &<+->= -1 \\
     \sum_n f(n) &\to \int f(x) dx
   \end{incralign*}
+  (increment at this line = \incrref{.})\\
 \end{verbatim}
     
     The pre-processor is not able to distinguish between the |&| alignment
     characters that apply to the containing environment and any that appear
     within (e.g.) enclosed |array| environments.  So any such environments need
-    to be protected as below.  Note that it is still possible to add increments
-    within them, which are processed sequentially with those in the wrapper,
-    respecting increment labels, resets etc.\footnote{I have tried to find a way
-      to use a specification like |</!mat/->| to both select and reset an
-      increment in the manner of \texttt{fromincr}, but thus far this has eluded my
-      \LaTeX\ hacking skills}
+    to be protected using either a token register or protected macro.  Note that
+    it is still possible to use increments within the environments, which are
+    processed sequentially with those in the wrapper, respecting increment
+    labels, resets etc.
 
     \example
 \begin{verbatim}
+  % using token registers
   \newtoks\mymatrix
-  (increment at this line = \incrref{.})\\
   \mymatrix={\begin{pmatrix} 1 & 2 \\ \alt<+->{3}{2} & 4 \\ \end{pmatrix}}
   \begin{incralign}
     \incrlabel{mat}\the\mymatrix \resetincr[/mat/]& \text{is \only<+->{not }singular}
   \end{incralign}
+
+  % using \protected
+  \protected\def\mymatrix{\begin{pmatrix} 1 & 2 \\ \alt<+->{3}{2} & 4 \\ \end{pmatrix}}
+  \begin{incralign}
+    \incrlabel{mat}\mymatrix \resetincr[/mat/]& \text{is \only<+->{not }singular}
+  \end{incralign}
+
 \end{verbatim}
     It may be wise to put the |\newtoks| declaration outside the frame so as not
     to consume more of \TeX's resources than needed.  Also note that equation

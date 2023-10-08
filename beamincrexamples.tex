@@ -1,6 +1,16 @@
 \documentclass[\jobname]{beamer} % use jobname="handout" for handout
 \usepackage{beamincr}
 
+%% 4-up handouts -- confirm \handoutscanonly still works
+\mode<handout>
+{
+  \usepackage{pgfpages}
+  \pgfpagesuselayout{4 on 1}[a4paper,landscape,border shrink=5mm]
+}
+
+
+
+
 \begin{document}
 
 \newcounter{exampc}
@@ -11,14 +21,14 @@
 
                
 \begin{examp}
-  text on slides 1 and up\\
+  text on slides 1+\\
   \onslide<2->
-  text on slides 2 and up\\
+  text on slides 2+\\
   \onslide<3-4>{
-  text only on slides 3 and 4\\
+  text only on slides 3-4\\
   } 
   \only<5>{text only on slide 5\\}
-  more text on slides 2 and up\\
+  more text on slides 2+\\
 \end{examp}
 
 \begin{examp}
@@ -61,7 +71,7 @@
     \begin{column}{.2\textwidth}
       \resetincr[2]
       \begin{itemize}[<+-| alert@+>]
-      \item green \item peach \item purple \item orange
+      \item green \item yellow \item purple \item orange
       \end{itemize}
     \end{column}
   \end{columns}
@@ -81,7 +91,7 @@
 \end{examp}
 
 \stepcounter{exampc}
-\begin{frame}[label=twolists]{examp \theexampc}
+\begin{frame}[label=twolists]{example \theexampc}
   \resetincr
   \begin{center}
     Two lists \onslide<+->{in sync}\\
@@ -98,7 +108,7 @@
     \begin{column}{.2\textwidth}
       \resetincr[/startlist/]%
       \begin{itemize}[<+-| alert@+>]
-      \item green \item peach \item purple \item orange
+      \item green \item yellow \item purple \item orange
       \end{itemize}
     \end{column}
   \end{columns}
@@ -116,15 +126,18 @@
   \parseincrrefspec{/two/-/two(3)/} % prints 2-5
 \end{examp}
 
-\begin{frame}<1>[label=test]
+\begin{frame}<2>[label=test]{example handoutframe}
+  \handoutscanonly
   \resetincr
-  \onslide<+-> \incrlabel{two}
-  2+
+  \incrlabel{handout}
+  \only<.>{this text only on the handout\\}
   \onslide<+->
-  3+
+  this text only on the screen\\
 \end{frame}
 
-\againframe</two/>{test}
+% \againframe</two/>{test}
+\handoutframe</handout/>{test}
+
 
 \newtoks\mymatrix
 \begin{examp}
@@ -134,11 +147,16 @@
     </x/-> x^2 &= y^2 & </x/->\resetincr[/x/] e^{i\pi} &<+->= -1 \\
     \sum_n f(n) &\to \int f(x) dx
   \end{incralign*}
-
   (increment at this line = \incrref{.})\\
+
   \mymatrix={\begin{pmatrix} 1 & 2 \\ \alt<+->{3}{2} & 4 \\ \end{pmatrix}}
   \begin{incralign}
-    \incrlabel{mat}\the\mymatrix \resetincr[/mat/] & \text{is \only<+->{not }singular}
+     \incrlabel{mat}\the\mymatrix \resetincr[/mat/] & \text{is }\only<+->{\textit{not }}\text{singular}
+   \end{incralign}
+  \protected\def\mymatrixalt{\begin{pmatrix} 1 & 2 \\ \alt<+->{3}{2} & 4 \\ \end{pmatrix}}
+  \resetincr[/mat(-1)/]
+  \begin{incralign}
+    \mymatrixalt \resetincr[/mat/] & \text{is }\only<+->{\textit{not }}\text{singular}
   \end{incralign}
 
 \end{examp}

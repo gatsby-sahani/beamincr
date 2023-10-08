@@ -1,19 +1,13 @@
 % beamincr.sty
 % enhancements to beamer increment handling
 
-%% Reset relative slide / increment counter
-%% \fromslide<n>
-% effect is the same as \onslide<n-> BUT beamerpauses is reset so
-% that subsequent incremental overlays are relative to n
-% \fromslide<2>
-% text on slide 2
-% \onslide<+->
-% text on slide 3
-% this is almost the same as \pause{n} but internally sets beamerpauses to max(1,n-1)
-% to work well with <+> incremental refs.
+% choose the second line to get debugging messages on screen and log
+% \def\debug@message{\message}
+\def\debug@message{\@gobble}
 
 \RequirePackage{etoolbox} % beamer uses this anyway
 \let\x@=\expandafter
+
 
 \newcommand\resetincr[1][1]{%
   \@resetincr{\parseincrrefspec{#1}}%
@@ -24,7 +18,7 @@
 %  \c@beamerpauses=\numexpr#1+1\relax%
 %  \setcounter{beamerpauses}{\numexpr#1+1\relax}%
 %  \stepcounter{beamerpauses}%
-  \message{(@resetincr: |#1|)}%
+  \debug@message{(@resetincr: |#1|)}%
 }
 
   
@@ -140,20 +134,17 @@
 % \newcount\incr@result
 \def\@parseincrrefspec@bang#1{%
   % \incr@result=\@incrref[\beamer@againname]#1()%
-  % \message{bang: |#1| = |\@incrref[\beamer@againname]#1()| = |\the\incr@result|}%
+  % \debug@message{bang: |#1| = |\@incrref[\beamer@againname]#1()| = |\the\incr@result|}%
   \@resetincr{\@incrref[\csname beamer@againname\endcsname]#1()}%
   \@incrref[\beamer@againname]#1()%
 }
 \def\@parseincrrefspec@nobang#1{%
   \@incrref[\beamer@againname]#1()%
 }
-  
+
+%% 
 %% refer to names within overlay specs
-% \fromincr<3> \incrlabel{myslide}
-% \onslide<+->n
-% this on slide 4-
-% \onslide</myincr/->
-% this on slide \incrref{myname}- [3-]
+%%
 
 % this involves some minor hackery: the idea is to redefine the macro
 % \beamer@masterdecode (which seems to be the top level call to parse overlay
@@ -164,7 +155,7 @@
 % now replace it, calling the old one
 \def\beamer@masterdecode#1{%
   \edef\parsed@spec{\parseincrrefspec{#1}}%
-  \message{masterdecode: #1 -> (\parsed@spec)^^J}%
+  \debug@message{masterdecode: #1 -> (\parsed@spec)^^J}%
   \beamer@masterdecode@orig{\parsed@spec}%
 }%
 
@@ -172,6 +163,9 @@
 \let\beamer@againframe@orig=\beamer@againframe
 \def\beamer@againframe<#1>{\beamer@againframe@orig<\parseincrrefspec{#1}>}
 
+%%
+%% \againframe variants
+%%
 
 %% Access the *contents* of a previously defined frame.  Allows more fine-grained access, changes etc.
 \newcommand{\againframebody}[1]{%
@@ -202,7 +196,9 @@
 }
 
 
+%% 
 %% Show specific overlay stage(s) in handout.
+%%
 
 % The handout and trans modes usually "flatten" all the overlays of a
 % frame.  This may not be desirable, for example when text has been
@@ -220,7 +216,7 @@
 % https://tex.stackexchange.com/questions/455444/beamer-overlays-and-handout-exclude-frames-from-handout/455459#455459
 % but a different interface.
 
-\newcommand\handoutframe[1][handout]{
+\newcommand\handoutframe[1][handout]{%
   \@ifnextchar<%
     {\handoutframe@[#1]}%
     {\handoutframe@[#1]<1->}%
@@ -237,6 +233,22 @@
 %    \edef\beamer@currentmode{\save@currentmode}%
   }%
 }
+
+% this command is similar to a <handout:0> argument to frame in that it
+% suppresses the frame output in [handout] mode.  But the frame is still scanned
+% and so increment labels are available for use with \handoutframe.
+
+% use string comparison here rather than \mode<> because \mode<> is expanded
+% into the frame contents and so the code would be executed even after changing
+% \beamer@currentmode
+\newcommand\handoutscanonly[1][handout]{%
+  \@ifundefined{AddToHookNext}{}{%
+    \ifnum\pdf@strcmp{\beamer@currentmode}{#1}=0\relax%
+      \AddToHookNext{shipout/before}{\DiscardShipoutBox}%
+    \fi%
+  }%
+}
+
 
 
 
@@ -295,9 +307,9 @@
 \def\@incralign@star#1{\@incralign[amsalign@star]{#1}}
 \def\@incralign[#1]#2{%
   \@incraligntoks={}% clear processed token list
-  \message{send to process@line: \unexpanded{#2}\\X^^J}%
+  \debug@message{send to process@line: \unexpanded{#2}\\X^^J}%
   \@incralign@opt#2\\X% process raw body token by token (\\ added to last line wiill be removed)
-  \message{send to #1: \the\@incraligntoks^^J}%
+  \debug@message{send to #1: \the\@incraligntoks^^J}%
   \begin{#1}% pass tokens to align
     \the\@incraligntoks
   \end{#1}%
@@ -315,7 +327,7 @@
 % #2: this line
 % #3: remaining lines  
 \def\@incralign@process@line[#1]#2\\#3X{%
-%  \message{process@line: spec #1| line: #2 | remaining body: #3^^J}%
+%  \debug@message{process@line: spec #1| line: #2 | remaining body: #3^^J}%
   \@ifempty{#2}{}% done processing all lines
   {% insert & at the end of the line
      \@incralign@process@field[#1]#1&X#2&\\#3X%
@@ -328,7 +340,7 @@
 % #3: remaining spec
 % #4: remaning body
 \def\@incralign@process@field[#1]#2&#3X#4X{%
-%  \message{process@field:  spec: #2 | remaining spec: #3 | remaining body: #4^^J}%
+%  \debug@message{process@field:  spec: #2 | remaining spec: #3 | remaining body: #4^^J}%
   \@ifempty{#3}% <spec>&X is the last field
            {\@incralign@field@opt\@incraligntobreak}%
            {\@incralign@field@opt\@incraligntoamp}%
@@ -341,7 +353,7 @@
 % #3: spec for this field
 % #4: remaining spec
 \def\@incralign@field@opt#1[#2][#3][#4]{%
-%  \message{incraligntoamp@opt: spec: #3 | remain spec: #4^^J}%
+  \debug@message{incraligntoamp@opt: spec: #3 | remain spec: #4^^J}%
   \@ifnextchar<%input starts with overlay spec char
     {#1[#2][#4]}%
     {#1[#2][#4]#3}%
@@ -355,7 +367,7 @@
 % #5: remaining line
 % #6: remaining body
 \def\@incraligntoamp[#1][#2]<#3>#4&#5\\#6X{%
-%  \message{incraligntoamp: spec:<#3> | field:(#4) | line:(#5) | remain:(#6)^^J}%
+%  \debug@message{incraligntoamp: spec:<#3> | field:(#4) | line:(#5) | remain:(#6)^^J}%
   \@incraligntoks=\x@{\the\@incraligntoks \onslide<#3>{#4}}%
   \@ifempty{#5}% run out of input fields before spec fields
      {%
