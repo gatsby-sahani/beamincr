@@ -14,17 +14,29 @@
 }
 \beamincrdebug0
 
-\newcommand\resetincr[1][1]{%
+\def\resetincr{%
+  \@ifnextchar<%
+    {\resetincr@angle<}% called as action
+    {\resetincr@normal}%
+}
+
+\newcommand\resetincr@normal[1][1]{%
   \@resetincr{\parseincrspec{#1}}%
 }
+\def\resetincr@angle<#1:#2>{% called as action
+  \@resetincr{#2}% ignore the mode -- always "all"
+}
 \def\@resetincr#1{%
-% etoolbox version -- local?
+% etoolbox version -- local by default
   \global\defcounter{beamerpauses}{#1+1}%
 %  \c@beamerpauses=\numexpr#1+1\relax%
 %  \setcounter{beamerpauses}{\numexpr#1+1\relax}%
-%  \stepcounter{beamerpauses}%
-  \debug@message{(@resetincr: |#1|)}%
+  \debug@message{(@resetincr: (#1))^^J}%
 }
+
+% beamer actions are documented to always call environments, but
+% actually call commands.  Define env in case.
+\newenvironment<>{resetincrenv}{\resetincr#1}{}
 
   
 \def\fromincr<#1>{%

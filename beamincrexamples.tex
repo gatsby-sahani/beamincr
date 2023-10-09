@@ -120,6 +120,38 @@
 
 \againframe<1,/halfway/,/end(-1)/-/end/>{twolists}
 
+\beamincrdebug1
+\begin{examp}
+  \resetincr
+  \begin{center}
+    Two lists \onslide<+->{in sync}\\
+    \onslide<+->{with more material\\}
+    \onslide<+->{at the top}
+  \end{center}
+  \begin{columns}
+    \begin{column}{.2\textwidth}
+      \incrlabel{startlist}%
+      \begin{itemize}[<+-| alert@+>]
+      \item Apple \item Peach \incrlabel{halfway} \item Plum \item Orange
+      \end{itemize}
+    \end{column}
+    \begin{column}{.2\textwidth}
+      % \resetincr[/startlist/]
+      \action<resetincr@/startlist/>{}
+      \begin{itemize}[<+-| alert@+>]
+      \item green \item yellow \item purple \item orange
+      \end{itemize}
+    \end{column}
+  \end{columns}
+  \vfill
+  \onslide<+->
+  The final increment is \incrref{.}. 
+  \incrlabel{end}
+\end{examp}
+\beamincrdebug0
+
+
+
 \begin{examp}
   \resetincr[2]
   \incrlabel{two}
