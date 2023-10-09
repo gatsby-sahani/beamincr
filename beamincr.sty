@@ -117,47 +117,71 @@
 \def\@gobbleparens#1(){}
   
 
-%% parse overlay spec with incrlabel refs
+%% parse overlay spec with /incrlabel/ refs
 % \parseincrspec{spec} replaces incr labels within // chars with the
 % corresponding values returned by \incrref.
 
 % Again, we use a helper function that adds empty // chars to terminate the
 % parser.  In this case we keep going until we hit the terminal //.
 
-% The 'bang' commands aren't used.  They were an attempt to implement
-% a notation like </!foo/> to reset the increment counter to /foo/.
-% They work with \parseincrspec alone, but but I can't find a way
-% to get the setcounter commands out through the beamer wrapper.
-
+% start the parsing
 \def\parseincrspec#1{%
   \@parseincrspec#1//%
 }
+
+% split input by /
+% #1: input to first /
+% #2: input to next /
 \def\@parseincrspec#1/#2/{%
-  #1%
-  \@ifempty{#2}{}{% if empty we're done, else:
-%    \@incrref[\beamer@againname]#2()% resolve this ref
-     \@parseincrspec@checkbang#2!!% use this instead for /!foo/
+  #1% copy input to first /
+  \@ifempty{#2}{}{% if empty we're done
+    \@incrref[\beamer@againname]#2()% else resolve this ref
     \@parseincrspec% keep going
   }%
 }
 
-\def\@parseincrspec@checkbang#1!#2!{%
-  \@ifempty{#1}% first char of incrspec was !
-    {\@parseincrspec@bang{#2}\@gobblebang}%
-    {\@parseincrspec@nobang{#1}}%
+%% parse overlay spec with !(incr) actions
+\def\parseresetspec#1{%
+  \@parseresetspec{}#1!!% init: empty actions; input terminated by !!
 }
-\def\@gobblebang#1!{}
 
-% \newcount\incr@result
-\def\@parseincrspec@bang#1{%
-  % \incr@result=\@incrref[\beamer@againname]#1()%
-  % \debug@message{bang: |#1| = |\@incrref[\beamer@againname]#1()| = |\the\incr@result|}%
-  \@resetincr{\@incrref[\csname beamer@againname\endcsname]#1()}%
-  \@incrref[\beamer@againname]#1()%
+% split input by !
+% #1: accumulated actions
+% #2:input to first !
+% #3:input to next !
+\def\@parseresetspec#1#2!#3!{%
+  #2%copy input to first !
+  \@ifempty{#3}%no single !'s left (and terminal !! now removed)
+    {#1}%just print accumulated actions
+    {\@parseresetspec@grabnum{#1}{}#3!}%else found !: grab the number at start of #3
 }
-\def\@parseincrspec@nobang#1{%
-  \@incrref[\beamer@againname]#1()%
+
+% hack to test for digit
+\def\ifisdigit#1{\ifcat_\ifnum9<1#1 _\else A\fi\x@\@firstoftwo\else\x@\@secondoftwo\fi}
+
+% found a ! -- read the following number
+% #1: accumulated actions
+% #2: number so far
+% #3: next token
+% #4: remaining input to !
+\def\@parseresetspec@grabnum#1#2#3#4!{% #1->accum actions #2->number so far #3->next token 
+  \ifisdigit#3%
+    {\@ifempty{#4}% no more input
+       {\@@parseresetspec{#1}{#2#3}!}% number is #2#3
+       {\@parseresetspec@grabnum{#1}{#2#3}#4!}}% check for more digits
+    {\@@parseresetspec{#1}{#2}#3#4!}% number is #2
 }
+
+% got the number: create action and recurse
+% #1: accumulated actions
+% #2: increment number
+% #3: rest of input to next !
+\def\@@parseresetspec#1#2#3!{%
+  #2%put count value on stream
+  \@parseresetspec{#1|resetincr\string @#2}#3!%add new action and parse remainder
+}
+  
+
 
 %% 
 %% refer to names within overlay specs
@@ -172,8 +196,9 @@
 % now replace it, calling the old one
 \def\beamer@masterdecode#1{%
   \edef\parsed@spec{\parseincrspec{#1}}%
-  \debug@message{masterdecode: <#1> -> <\parsed@spec>^^J}%
-  \beamer@masterdecode@orig{\parsed@spec}%
+  \edef\parsed@spec@{\expandafter\parseresetspec\expandafter{\parsed@spec}}%
+  \debug@message{masterdecode: <#1> -> <\parsed@spec@>^^J}%
+  \x@\beamer@masterdecode@orig\x@{\parsed@spec@}%
 }%
 
 % \againframe seems to need special treatment
@@ -401,7 +426,7 @@
 % #6: remaining body
 \def\@incraligntoamp[#1][#2]<#3>#4&#5\\#6X{%
 %  \debug@message{incraligntoamp: spec:<#3> | field:(#4) | line:(#5) | remain:(#6)^^J}%
-  \@incraligntoks=\x@{\the\@incraligntoks \onslide<#3>{#4}}%
+  \@incraligntoks=\x@{\the\@incraligntoks \action<#3>{#4}}%
   \@ifempty{#5}% run out of input fields before spec fields
      {%
         \@ifempty{#6}{}% we're done
@@ -422,7 +447,7 @@
 % #4: field contents
 % #5: remaining body
 \def\@incraligntobreak[#1][#2]<#3>#4&\\#5X{%
-  \@incraligntoks=\x@{\the\@incraligntoks \onslide<#3>{#4}}%
+  \@incraligntoks=\x@{\the\@incraligntoks \action<#3>{#4}}%
   \@ifempty{#5} % done processing all lines
   {}%
   {\@incraligntoks=\x@{\the\@incraligntoks \\}%
