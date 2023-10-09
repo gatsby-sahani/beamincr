@@ -137,9 +137,11 @@
     \end{column}
     \begin{column}{.2\textwidth}
       % \resetincr[/startlist/]
-      \action<resetincr@/startlist/>{}
+      % \alert<resetincr@/startlist/>
       \begin{itemize}[<+-| alert@+>]
-      \item green \item yellow \item purple \item orange
+        \tracingmacros1
+      \item<!/startlist(1)/-|alert@/startlist(1)/> green \item yellow \item purple \item orange
+        \tracingmacros0
       \end{itemize}
     \end{column}
   \end{columns}
@@ -188,7 +190,7 @@
   \protected\def\mymatrixalt{\begin{pmatrix} 1 & 2 \\ \alt<+->{3}{2} & 4 \\ \end{pmatrix}}
   \resetincr[/mat(-1)/]
   \begin{incralign}
-    \mymatrixalt \resetincr[/mat/] & \text{is }\only<+->{\textit{not }}\text{singular}
+    \mymatrixalt &<!/mat/-|alert@/mat(1)/> \text{is }\only<+->{\textit{not }}\text{singular}
   \end{incralign}
 
 \end{examp}
