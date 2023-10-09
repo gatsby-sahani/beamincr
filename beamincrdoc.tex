@@ -309,10 +309,6 @@ The general form of an increment specification is
 
   Increment specifications can be used as part of almost any overlay
   specification by enclosing them with slashes, e.g. |</mylabel(2)/>|.
-  \footnote{I have tried to find a way
-      to use a specification like |</!mat/->| to both select and reset an
-      increment in the manner of \texttt{fromincr}, but thus far this has eluded my
-      \LaTeX\ hacking skills}
 \end{command}
 
 An example:
@@ -365,6 +361,47 @@ There is also a similar new command called |\handoutframe| to render more than
 one overlay from a frame in \texttt{handout} or similar modes that, by default,
 just show a single slide with all the overlays collapsed.  See \cref{sec:helper}.
 
+\subsection{Setting increments in overlay specifications}
+
+It is possible to use the \beamer\ syntax for actions in overlays to reset the
+increment number.  This can be done using the explicit |resetincr@|\meta{increment} action or
+with an implicit |<!|\meta{increment}|>| specification.  \example
+\begin{verbatim}
+  \action<3-|resetincr@3>{body}
+  \action<!3->{body}
+\end{verbatim}
+The increment number can be replaced by a label, with optional offset:
+\begin{verbatim}
+  \resetincr[2]\incrlabel{x}\resetincr[1]
+  \action</x/->{body on 2+}
+  \onslide<.->{this on 1+}
+  \action<!/x(2)/->{body on 4+}
+  \onslide<+->{this on 5+}
+\end{verbatim}
+The forms |<!+>| and |<!.>| aren't supported (and wouldn't be useful: |<+>|
+already advances the increment, while |<!.>| would set it to its current value).
+However |<!/.(|\meta{offset}|)/>| (note the |/| label notation) can be used to advance the
+increment counter by multiple (or negative) steps.
+
+The reset only takes effect after the overlay specification has been interpreted
+and before the body is set.  So any |+| or |.| references will be relative to
+the increment in effect \emph{before} the |\action|.
+\example
+\begin{verbatim}
+  \resetincr
+  \action<!/.(2)/-|alert@.>{alert too early}
+  \action<!/.(2)/->{\alert<.>{alert when uncovered}}
+\end{verbatim}
+It's also possible to
+issue multiple |!| commands in one overlay spec but only the last of them will
+take effect.
+
+According to the user guide, \beamer\ actions are only supported by overlay
+specifications to |\action|, |\item|, the |actionenv| environment and block
+environments like |block| and |theorem|.  In the absence of any action
+spefications, |\action| acts like |\uncover| (or |\onslide| with an argument).
+Note that |\fromslide| (\cref{sec:setting}) can act like an |\onslide|
+declaration.
 
 \section{\AmSTeX\ align environments}
 
@@ -377,17 +414,20 @@ should be straightforward to extend the approach used here to other
 
 
 \begin{environment}{{incralign[*]}\opt{\texttt{[<}\meta{spec1}\texttt{>\&<}\meta{spec2}\texttt{>\& ...]}}}
-    Pre-process the input to |align[*]| to place an |\onslide<>{}| command
+    Pre-process the input to |align[*]| to place an |\action<>{}| command
     around each field, defined as the material appearing between successive |&|
     and/or |\\| tokens.  By default, the first field on a line is called with
-    |\onslide<+->{}|, and remaining ones with |\onslide<.->{}|.  This has the
+    |\action<+->{}|, and remaining ones with |\action<.->{}|.  This has the
     effect of displaying a full line at a time.  The optional argument makes it
-    possible to change this to |\onslide<spec1>|, |\onslide<spec2>|, etc.\ with
+    possible to change this to |\action<spec1>|, |\action<spec2>|, etc.\ with
     the sequence of specifications reset to |<spec1>| at the beginning of every
     line. There must be at least as many specifications given as their are
     fields used on the longest single line in the environment contents, but
     lines can have fewer fields.  The default specification values can be
     changed by a calling |\incraligndefaultspec| as below.
+
+    The use of |\action| means that beamer will interpret both implicit
+    increments and standard |action@|\meta<increment> actions.
 
     It is also possible to override the default for a single field by starting
     it with the new specification.  This means that if the field content itself
@@ -397,7 +437,7 @@ should be straightforward to extend the approach used here to other
 \begin{verbatim}
   \begin{incralign*}[<+->&<.->&<+->&<.->] % both sides each eqns appear at once
     x\incrlabel{x} &= y  &  1 &{}< 2 \\
-    </x/-> x^2 &= y^2  &  </x/->\resetincr[/x/] e^{i\pi} &<+->= -1 \\
+    </x/-> x^2 &= y^2  &  <!/x/-> e^{i\pi} &<+->= -1 \\
     \sum_n f(n) &\to \int f(x) dx
   \end{incralign*}
   (increment at this line = \incrref{.})\\
