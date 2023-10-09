@@ -1,13 +1,18 @@
 % beamincr.sty
 % enhancements to beamer increment handling
 
-% choose the first line to get debugging messages on screen and log
-% \def\debug@message{\message}
-\def\debug@message{\@gobble}
-
 \RequirePackage{etoolbox} % beamer uses this anyway
 \let\x@=\expandafter
 
+% choose the first line to get debugging messages on screen and log
+\def\beamincrdebug#1{%
+  \ifnum #1 > 0\relax
+    \def\debug@message{\message}
+  \else
+    \def\debug@message{\@gobble}
+  \fi
+}
+\beamincrdebug0
 
 \newcommand\resetincr[1][1]{%
   \@resetincr{\parseincrspec{#1}}%
@@ -163,7 +168,7 @@
 \let\beamer@againframe@orig=\beamer@againframe
 \def\beamer@againframe<#1>{\beamer@againframe@orig<\parseincrspec{#1}>}
 
-%%
+%% 
 %% \againframe variants
 %%
 
