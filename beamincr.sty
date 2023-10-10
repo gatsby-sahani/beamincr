@@ -301,13 +301,19 @@
 \protected\def\beamincr@protected@mode{\mode}
 
 \newcommand<>\framescanonly{%
+  \if@denyscanonly\else%
   \beamincr@protected@mode#1{%
     \@ifundefined{AddToHookNext}%
       {\PackageWarning{beamincr}{\framescanonly is not supported in this LaTeX version}}%
       {\AddToHookNext{shipout/before}{\DiscardShipoutBox}}%
   }%
+  \fi
 }
 
+\newif\if@denyscanonly
+
+\def\framescanonlydeny{\@denyscanonlytrue}
+\def\framescanonlyallow{\@denyscanonlyfalse}
 
 
 %% 
@@ -376,19 +382,31 @@
 % use the default spec if optional arg absent
 \def\@incralign@opt{%
   \@ifnextchar[%
-    {\@incralign@process@line}%
-    {\x@\@incralign@process@line\x@[\@incralign@defaultspec]}% 
+    {\@incralign@process@firstline}%
+    {\x@\@incralign@process@firstline\x@[\@incralign@defaultspec]}% 
 }
   
-% process a line
+% process first line reading increment spec
 % #1: increment spec
 % #2: this line
 % #3: remaining lines  
-\def\@incralign@process@line[#1]#2\\#3X{%
+\def\@incralign@process@firstline[#1]#2\\#3X{%
 %  \debug@message{process@line: spec #1| line: #2 | remaining body: #3^^J}%
-  \@ifempty{#2}{}% done processing all lines
+  \@ifempty{#2}{}% empty environment?
   {% insert & at the end of the line
      \@incralign@process@field[#1]#1&X#2&\\#3X%
+  }%
+}
+
+% process a line
+% #1: this line
+% #2: remaining lines
+% #3: increment spec
+\def\@incralign@process@line#1\\#2X#3X{%
+%  \debug@message{process@line: spec #1| line: #2 | remaining body: #3^^J}%
+  \@ifempty{#1}{}% done processing all lines
+  {% insert & at the end of the line
+     \@incralign@process@field[#3]#3&X#1&\\#2X%
   }%
 }
 
@@ -432,7 +450,7 @@
         \@ifempty{#6}{}% we're done
           {%
             \@incraligntoks=\x@{\the\@incraligntoks \\}%
-            \@incralign@process@line[#1]#6X
+            \@incralignbreakcheckopt#6X#1X% check for optional arg after \\
           }%
      }%
      {%
@@ -451,9 +469,27 @@
   \@ifempty{#5} % done processing all lines
   {}%
   {\@incraligntoks=\x@{\the\@incraligntoks \\}%
-    \@incralign@process@line[#1]#5X% process next line
+    \@incralignbreakcheckopt#5X#1X%
   }%
 }
+
+% check for optional arg after break
+\def\@incralignbreakcheckopt{%
+  \@ifnextchar[%
+    {\@incralignbreakgetopt}%
+    {\@incralign@process@line}%
+}
+
+% read optional arg after break
+% #1: opt arg
+% #2: rest of body
+% #3: full spec  
+\def\@incralignbreakgetopt[#1]#2X#3X{%
+  \@incraligntoks=\x@{\the\@incraligntoks [#1]}%
+  \@incralign@process@line#2X#3X%
+}
+      
+    
 
 \catcode`X=11
 
