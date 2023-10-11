@@ -382,31 +382,19 @@
 % use the default spec if optional arg absent
 \def\@incralign@opt{%
   \@ifnextchar[%
-    {\@incralign@process@firstline}%
-    {\x@\@incralign@process@firstline\x@[\@incralign@defaultspec]}% 
+    {\@incralign@process@line}%
+    {\x@\@incralign@process@line\x@[\@incralign@defaultspec]}%
 }
   
-% process first line reading increment spec
+% process next line
 % #1: increment spec
 % #2: this line
 % #3: remaining lines  
-\def\@incralign@process@firstline[#1]#2\\#3X{%
+\def\@incralign@process@line[#1]#2\\#3X{%
 %  \debug@message{process@line: spec #1| line: #2 | remaining body: #3^^J}%
   \@ifempty{#2}{}% empty environment?
   {% insert & at the end of the line
      \@incralign@process@field[#1]#1&X#2&\\#3X%
-  }%
-}
-
-% process a line
-% #1: this line
-% #2: remaining lines
-% #3: increment spec
-\def\@incralign@process@line#1\\#2X#3X{%
-%  \debug@message{process@line: spec #1| line: #2 | remaining body: #3^^J}%
-  \@ifempty{#1}{}% done processing all lines
-  {% insert & at the end of the line
-     \@incralign@process@field[#3]#3&X#1&\\#2X%
   }%
 }
 
@@ -417,25 +405,21 @@
 % #4: remaning body
 \def\@incralign@process@field[#1]#2&#3X#4X{%
 %  \debug@message{process@field:  spec: #2 | remaining spec: #3 | remaining body: #4^^J}%
-  \@ifempty{#3}% <spec>&X is the last field
-           {\@incralign@field@opt\@incraligntobreak}%
-           {\@incralign@field@opt\@incraligntoamp}%
-           [#1][#2][#3]#4X%
+  \@incralign@field@optspec[#1][#2][#3]#4X%
 }
 
 % check for overlay spec within the field
-% #1: command to execute on field
-% #2: full spec
-% #3: spec for this field
-% #4: remaining spec
-\def\@incralign@field@opt#1[#2][#3][#4]{%
-  \debug@message{incraligntoamp@opt: spec: #3 | remain spec: #4^^J}%
+% #1: full spec
+% #2: spec for this field
+% #3: remaining spec
+\def\@incralign@field@optspec[#1][#2][#3]{%
+%  \debug@message{incraligntoamp@opt: spec: #3 | remain spec: #4^^J}%
   \@ifnextchar<%input starts with overlay spec char
-    {#1[#2][#4]}%
-    {#1[#2][#4]#3}%
+    {\@incraligntoamp[#1][#3]}%
+    {\@incraligntoamp[#1][#3]#2}%
 }
 
-% process non-final field teminated by &
+% process field teminated by &
 % #1: full spec
 % #2: remaining spec
 % #3: spec for this field
@@ -445,48 +429,43 @@
 \def\@incraligntoamp[#1][#2]<#3>#4&#5\\#6X{%
 %  \debug@message{incraligntoamp: spec:<#3> | field:(#4) | line:(#5) | remain:(#6)^^J}%
   \@incraligntoks=\x@{\the\@incraligntoks \action<#3>{#4}}%
-  \@ifempty{#5}% run out of input fields before spec fields
-     {%
-        \@ifempty{#6}{}% we're done
-          {%
+  \@ifempty{#5}%
+     {% reached last field on line
+        \@ifempty{#6}{}% no more lines - we're done
+          {% else
             \@incraligntoks=\x@{\the\@incraligntoks \\}%
-            \@incralignbreakcheckopt#6X#1X% check for optional arg after \\
+            \@incralignbreak@checkopt#6X#1X% check for optional arg after \\
           }%
      }%
-     {%
+     {% else more fields
         \@incraligntoks=\x@{\the\@incraligntoks &}%
-        \@incralign@process@field[#1]#2X#5\\#6X%
+        \@ifempty{#2}% reuse fullspec if we've exhausted the current one
+        {\@incralign@process@field[#1]#1&X#5\\#6X}%
+        {\@incralign@process@field[#1]#2X#5\\#6X}%
      }%
-}
-% process last field terminated by \\
-% #1: full spec
-% #2: remaining spec
-% #3: spec for this field
-% #4: field contents
-% #5: remaining body
-\def\@incraligntobreak[#1][#2]<#3>#4&\\#5X{%
-  \@incraligntoks=\x@{\the\@incraligntoks \action<#3>{#4}}%
-  \@ifempty{#5} % done processing all lines
-  {}%
-  {\@incraligntoks=\x@{\the\@incraligntoks \\}%
-    \@incralignbreakcheckopt#5X#1X%
-  }%
 }
 
 % check for optional arg after break
-\def\@incralignbreakcheckopt{%
+\def\@incralignbreak@checkopt{%
   \@ifnextchar[%
-    {\@incralignbreakgetopt}%
-    {\@incralign@process@line}%
+    {\@incralignbreak@getopt}%
+    {\@incralignbreak@noopt}%
+}
+
+% no optional arg after break: just process
+% #1: rest of body
+% #2: full spec
+\def\@incralignbreak@noopt#1X#2X{%
+  \@incralign@process@line[#2]#1X%
 }
 
 % read optional arg after break
 % #1: opt arg
 % #2: rest of body
-% #3: full spec  
-\def\@incralignbreakgetopt[#1]#2X#3X{%
+% #3: full spec
+\def\@incralignbreak@getopt[#1]#2X#3X{%
   \@incraligntoks=\x@{\the\@incraligntoks [#1]}%
-  \@incralign@process@line#2X#3X%
+  \@incralign@process@line[#3]#2X%
 }
       
     
