@@ -162,9 +162,8 @@ the same effect as that above.  \example
   more text on slides 2+\\
 \end{frame}
 \end{verbatim}
-This form allows easy automation using default overlay
-specificiations.  For instance (from the \beamer\ user guide)
-\example
+This form allows easy automation using default overlay specifications.  For
+instance (from the \beamer\ user guide) \example
 \begin{verbatim}
 \begin{itemize}[<+-| alert@+>]
 \item Apple
@@ -392,16 +391,15 @@ the increment in effect \emph{before} the |\action|.
   \action<!/.(2)/-|alert@.>{alert too early}
   \action<!/.(2)/->{\alert<.>{alert when uncovered}}
 \end{verbatim}
-It's also possible to
-issue multiple |!| commands in one overlay spec but only the last of them will
-take effect.
+It's possible to issue multiple |!| commands in one overlay spec but only the
+last of them will take effect.
 
 According to the user guide, \beamer\ actions are only supported by overlay
 specifications to |\action|, |\item|, the |actionenv| environment and block
 environments like |block| and |theorem|.  In the absence of any action
 spefications, |\action| acts like |\uncover| (or |\onslide| with an argument).
 Note that |\fromslide| (\cref{sec:setting}) can act like an |\onslide|
-declaration.
+declaration while setting the increment.
 
 \section{\AmSTeX\ align environments}
 
@@ -414,41 +412,41 @@ should be straightforward to extend the approach used here to other
 
 
 \begin{environment}{{incralign[*]}\opt{\texttt{[<}\meta{spec1}\texttt{>\&<}\meta{spec2}\texttt{>\& ...]}}}
-    Pre-process the input to |align[*]| to place an |\action<>{}| command
-    around each field, defined as the material appearing between successive |&|
-    and/or |\\| tokens.  By default, the first field on a line is called with
+    Pre-process the input to |align[*]| to place an |\action<>{}| command around
+    each field, defined as the material appearing between successive |&| and/or
+    |\\| tokens.  By default, the first field on a line is called with
     |\action<+->{}|, and remaining ones with |\action<.->{}|.  This has the
     effect of displaying a full line at a time.  The optional argument makes it
-    possible to change this to |\action<spec1>|, |\action<spec2>|, etc.\ with
-    the sequence of specifications reset to |<spec1>| at the beginning of every
-    line. There must be at least as many specifications given as their are
-    fields used on the longest single line in the environment contents, but
-    lines can have fewer fields.  The default specification values can be
-    changed by a calling |\incraligndefaultspec| as below.
+    possible to change this to |\action<|\opt{\meta{spec1}}|>|,
+    |\action<|\opt{\meta{spec2}}|>|, etc.\ with the sequence of specifications
+    reset to |<|\opt{\meta{spec1}}|>| at the beginning of every line. If there are fewer
+    specifications in the default than fields on a single line, the
+    specification is repeated.  The default specification values can be changed
+    by a calling |\incraligndefaultspec| as below.
 
-    The use of |\action| means that beamer will interpret both implicit
-    increments and standard |action@|\meta<increment> actions.
+    It is possible to override the default for a single field by starting it
+    with the new specification.  This means that a leading |<| in the field
+    content itself must be protected, e.g.\ by proceeding it with |{}|.
 
-    It is also possible to override the default for a single field by starting
-    it with the new specification.  This means that if the field content itself
-    starts with |<|, it needs to be protected, e.g.\ with a leading |{}|.
+    The use of |\action| means that beamer will interpret both standard
+    |action@|\meta{increment} actions and implicit (|!| prefixed) increment
+    resets.
 
     \example
 \begin{verbatim}
-  \begin{incralign*}[<+->&<.->&<+->&<.->] % both sides each eqns appear at once
+  \begin{incralign*}[<+->&<.->] % increment after every two &s
     x\incrlabel{x} &= y  &  1 &{}< 2 \\
-    </x/-> x^2 &= y^2  &  <!/x/-> e^{i\pi} &<+->= -1 \\
-    \sum_n f(n) &\to \int f(x) dx
+    </x/-> x^2 &= y^2    &  <!/x/-> e^{i\pi} &<+->= -1 \\
+    \sum_n f(n) &<.-|alert@.> \to \int f(x) dx
   \end{incralign*}
-  (increment at this line = \incrref{.})\\
 \end{verbatim}
     
     The pre-processor is not able to distinguish between the |&| alignment
     characters that apply to the containing environment and any that appear
-    within (e.g.) enclosed |array| environments.  So any such environments need
-    to be protected using either a token register or a protected macro.  Note
-    that it is still possible to use increments within the environments. These
-    are processed sequentially with those in the containing |align| environment,
+    within enclosed environments, such as |array|.  Thus, any such environments
+    must be protected using either a token register or a protected macro.  It is
+    still possible to use increments within the environments: these are
+    processed sequentially with those in the containing |align| environment,
     respecting increment labels, resets etc.
 
     \example
@@ -468,10 +466,16 @@ should be straightforward to extend the approach used here to other
 
 \end{verbatim}
     It may be wise to put the |\newtoks| declaration outside the frame so as not
-    to consume more of \TeX's resources than needed.  Also note that equation
-    numbers aren't currently overlay aware.
+    to consume more of \TeX's resources than needed.  
 
-    The current version does not support use of |\intertext|, but I hope to fix this.
+    |\intertext| lines must be terminated with |\\|.  By default they will be
+    grouped within the action call of the last field of the preceding line.
+    This behaviour can be changed by inserting a |\\| between that field and the
+    |\intertext|.  By default, both |\\|s will add extra vertical space and an
+    equation number in non-starred environments.  These can be avoided by using
+    a form like |\nonumber\\[-3ex]| instead.
+
+    At present, equation numbers aren't overlay aware.
 \end{environment}
 
 
@@ -544,7 +548,7 @@ defined.  If running a recent \LaTeX\ compiler (post 2021) the command
 \begin{command}{\framescanonly\opt{\sarg{mode specification}}}
   Scan the current frame without producing any output.  This is similar to a
   |<mode:0>| specification to |\begin{frame}|, but as the frame is still scanned
-  it allows side effects such as increment label definitions.  The |\frameonly|
+  it allows side effects such as increment label definitions.  The |\framescanonly|
   command should be placed inside the frame contents.  It is only available in
   recent versions of \LaTeX\ with hook support; a warning is printed in other
   cases.  If used in |beamer| mode the frame will be reprocessed for every
@@ -553,6 +557,17 @@ defined.  If running a recent \LaTeX\ compiler (post 2021) the command
   |\begin{frame}|.
 
   An example of its use appears above.
+\end{command}
+
+\begin{command}{\framescanonlystate \marg{onoff}}
+  This commands disables (when \meta{onoff} = 0) or enables (when \meta{onoff} >
+  0) the effect of |\framescanonly|.  It is needed when a |\framescanonly| is
+  used in |<beamer>| mode, and the frame is then accessed with |\handoutframe|
+  or |\againframe|.  These commands will attempt to set the frame in |<beamer>|
+  or the current mode, respectively, thus invoking the |\framescanonly| call
+  within the frame again and suppressing output.  The solution is to temporarily
+  disable its effect with |\framescanonlystate{0}|, restoring after the
+  |\againframe| with |\framescanonlystate{1}|
 \end{command}
 
 \begin{command}{\parseincrspec \marg{overlay spec}}

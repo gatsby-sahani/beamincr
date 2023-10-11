@@ -120,7 +120,6 @@
 
 \againframe<1,/halfway/,/end(-1)/-/end/>{twolists}
 
-\beamincrdebug1
 \begin{examp}
   \resetincr
   \begin{center}
@@ -150,7 +149,6 @@
   The final increment is \incrref{.}. 
   \incrlabel{end}
 \end{examp}
-\beamincrdebug0
 
 
 
@@ -173,24 +171,23 @@
 \handoutframe[handout|trans]</handout/>{test}
 
 
+\beamincrdebug1
 \newtoks\mymatrix
 \begin{examp}
   \resetincr
-  \begin{incralign*}[<+->&<.->&<+->&<.->&<+->&<.->] % both sides of up to 3 eqns/line appear at once
+  \begin{incralign*}[<+->&<.->]% both sides each eqn/line appear at once
     x\incrlabel{x} &= y & 1 &{}< 2 \\
-    </x/-> x^2 &= y^2 & </x/->\resetincr[/x/] e^{i\pi} &<+->= -1 \\
-    \sum_n f(n) &\to \int f(x) dx
+    </x/-> x^2 &= y^2 & </x/->\resetincr[/x/] e^{i\pi} &<+->= -1 \\[2ex]
+    \sum_n f(n) &<.-|alert@.>\to \int f(x) dx\\
   \end{incralign*}
   (increment at this line = \incrref{.})\\
 
   \mymatrix={\begin{pmatrix} 1 & 2 \\ \alt<+->{3}{2} & 4 \\ \end{pmatrix}}
+  \protected\def\mymatrixalt{\begin{pmatrix} 1 & 2 \\ \alt<+->{3}{2} & 4 \\ \end{pmatrix}}
   \begin{incralign}
      \incrlabel{mat}\the\mymatrix \resetincr[/mat/] & \text{is }\only<+->{\textit{not }}\text{singular}
-   \end{incralign}
-  \protected\def\mymatrixalt{\begin{pmatrix} 1 & 2 \\ \alt<+->{3}{2} & 4 \\ \end{pmatrix}}
-  \resetincr[/mat(-1)/]
-  \begin{incralign}
-    \mymatrixalt &<!/mat/-|alert@/mat(1)/> \text{is }\only<+->{\textit{not }}\text{singular}
+     \intertext{this is intertext}\nonumber\\[-3ex]
+     <!/mat/->\mymatrixalt &<!/mat/-|alert@/mat(1)/> \text{is }\only<+->{\textit{not }}\text{singular}
   \end{incralign}
 
 \end{examp}
