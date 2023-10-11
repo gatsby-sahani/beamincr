@@ -311,10 +311,7 @@
 }
 
 \newif\if@denyscanonly
-
-\def\framescanonlydeny{\@denyscanonlytrue}
-\def\framescanonlyallow{\@denyscanonlyfalse}
-
+\def\framescanonlystate#1{\ifnum#1>0\relax\@denyscanonlyfalse\else\@denyscanonlytrue\fi}
 
 %% 
 %% a rudimentary increment-aware align environment
