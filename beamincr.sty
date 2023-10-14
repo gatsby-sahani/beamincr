@@ -123,7 +123,7 @@
 % #7: numeric spec to = action
 \def\@incrlabel@action@parse#1<#2>#3/#4/#5X<#6:#7>X{%
   \@ifempty{#4}%
-    {}%#1<#2>{#3 \@dropslashslashend#5\end}}% ignore silently if label missing
+    {}%#1<#2>{#3 \@dropslashslashxx#5XX}}% ignore silently if label missing
     {\debug@message{action: setting label /#4/=\@currentincr+#7^^J}%
       \ifx*#7%
         \incrlabel{#4}%
@@ -133,9 +133,9 @@
     }%
   \@ifempty{#5}%
     {#1<#2>{#3}}% no /s in input: terminal //s removed
-    {#1<#2>{#3\@dropslashslashend#5\end}}% /{}/ in input, copy remaining arg and drop terminator
+    {#1<#2>{#3\@dropslashslashxx#5XX}}% /{}/ in input, copy remaining arg and drop terminator
 }
-\def\@dropslashslashend#1//\end{#1}
+\def\@dropslashslashxx#1//XX{#1}
 
 % the environment form will be called
 % as \begin{incrlabel@actionenv}<spec>\begin{uncoverenv}<spec>text\end...
@@ -170,6 +170,7 @@
 % \@gobbleparens to throw away the trailing ones (and any text between the real
 % ones and the trailers).  If not, the parser sees an empty arg between the
 % parens and knows to ignore it.
+
 
 \newcommand\incrref[2][\beamer@againname]{%
   \@incrref[#1]#2()%
@@ -217,7 +218,7 @@
 
 %% \parseresetspec - parse !(incr) actions
 \def\parseresetspec#1{%
-  \@parseresetspec{}#1!!% init: empty actions; input terminated by !!
+  \@parseresetspec{}#1!X!XX% init: empty actions; input terminated by !X!XX
 }
 
 % split input by !
@@ -226,10 +227,11 @@
 % #3:input to next !
 \def\@parseresetspec#1#2!#3!{%
   #2%copy input to first !
-  \@ifempty{#3}%no single !'s left (and terminal !! now removed)
-    {#1}%just print accumulated actions
-    {\@parseresetspec@grabnum{#1}{}#3!}%else found !: grab the number at start of #3
+  \ifX#3\x@\@firstoftwo\else\x@\@secondoftwo\fi
+      {#1\x@\@gobbletoxx}%just print accumulated actions and remove the XX
+      {\@parseresetspec@grabnum{#1}{}#3!}%else found !: grab the number at start of #3
 }
+\def\@gobbletoxx#1XX{}
 
 % hack to test for digit
 \def\ifisdigit#1{\ifcat_\ifnum9<1#1 _\else A\fi\x@\@firstoftwo\else\x@\@secondoftwo\fi}
@@ -244,7 +246,9 @@
     {\@ifempty{#4}% no more input
        {\@@parseresetspec{#1}{#2#3}!}% number is #2#3
        {\@parseresetspec@grabnum{#1}{#2#3}#4!}}% check for more digits
-    {\@@parseresetspec{#1}{#2}#3#4!}% number is #2
+    {\@ifempty{#2}%
+       {\@parseresetspec{#1}#3#4!}% no number, just kill !
+       {\@@parseresetspec{#1}{#2}#3#4!}}% number is #2
 }
 
 % got the number: create action and recurse
@@ -258,10 +262,6 @@
 
 
 %% \parselabelspec - parse |= actions
-
-\catcode`\|=\active
-\let\@activepipe=|
-\catcode`\|=12 % other
 
 % parse | segements
 \def\parselabelspec#1{%
