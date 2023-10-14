@@ -14,6 +14,11 @@
 }
 \beamincrdebug0
 
+
+%% 
+%% \resetincr - (re)set the increment counter
+%%
+
 \def\resetincr{%
   \@ifnextchar<%
     {\resetincr@angle<}% called as action
@@ -23,33 +28,36 @@
 \newcommand\resetincr@normal[1][1]{%
   \@resetincr{\parseincrspec{#1}}%
 }
+
+% action form
+% beamer actions are documented to always call environments, but
+% sometimes call commands..
+\newenvironment<>{resetincrenv}{\resetincr#1}{}
+
 \def\resetincr@angle<#1:#2>{% called as action
+  \debug@message{action: setting increment to #2^^J}%
   \@resetincr{#2}% ignore the mode -- always "all"
 }
 \def\@resetincr#1{%
-% etoolbox version -- local by default
+% etoolbox version -- allows calculation, but local by default
   \global\defcounter{beamerpauses}{#1+1}%
 %  \c@beamerpauses=\numexpr#1+1\relax%
 %  \setcounter{beamerpauses}{\numexpr#1+1\relax}%
-  \debug@message{(@resetincr: (#1))^^J}%
 }
 
-% beamer actions are documented to always call environments, but
-% actually call commands.  Define env in case.
-\newenvironment<>{resetincrenv}{\resetincr#1}{}
 
+%%
+%% \fromincr set the increment counter and place following text on corresponding slide
+%% 
   
 \def\fromincr<#1>{%
   \resetincr[#1]%
   \onslide<.->\relax%
 }
 
-%% use names to refer to (relative) overlays / increments
-
-% relative overlay numbering makes modifying and later inserting overlays easy,
-% but can make it hard to reference specific slides (e.g. in another part of the
-% frame, such as when coordinating text and a tikz figure; or in constructs like
-% \againframe).  
+%% 
+%% \incrlabel - increment labels
+%%
 
 % \incrlabel{foo} save the current "increment number" in the label 'foo'
 % for reference with \incrref{foo} (and/or </foo/>).
@@ -81,13 +89,56 @@
   \x@\x@\x@\xdef\x@\csname beamincr@#1@#2\endcsname{\@currentincr}%
 }
 
+%% \incrlabel@action is called using a |= action
+% the action is placed at the beginning of the calling spec, which
+% means it should be (almost) innermost.  Its argument contains only
+% {\uncover<spec>{text of action}}.  We need to read the label from
+% inside the text.
 
-%% \incrref{label}
-% give the incr number associated with label in the current frame as printable text.
-%% \incrref[framename]{label}
-% references a different frame
-%% \incrref{label(offset)}
-% adds a numerical offset.  The offset can be negative.
+% #1: spec
+% #2: arg = {\uncover<spec>{text}}
+\def\incrlabel@action<#1>#2{%
+  \x@\@incrlabel@action@parse\@incrlabel@action@unbracearg#2//X<#1>X%
+}
+% expose contents of grouped text arg
+\def\@incrlabel@action@unbracearg#1<#2>#3{%
+  #1<#2>#3% removes {} from #3
+}
+
+% #1: \uncover
+% #2: uncover spec
+% #3: text before label
+% #4: label
+% #5: text after label
+% #6: mode spec to = action (always 'all')
+% #7: numeric spec to = action
+\def\@incrlabel@action@parse#1<#2>#3/#4/#5X<#6:#7>X{%
+  \@ifempty{#4}%
+    {\PackageError{beamincr}{No label found for label assignment}{}}%
+    {\debug@message{action: setting label /#4/=\@currentincr #7^^J}}%
+  \incrlabel{#4}%
+  #1<#2>#3\@copytoslashslash#5%
+}
+\def\@copytoslashslash#1//{#1}
+
+% the environment form will be called as
+% \begin{incrlabel@actionenv}<spec>\begin{uncoverenv}<spec>text\end...
+% In this case, we just read to the first /.../.  If there isn't one,
+% this will create a (hopefully interpretable) error.
+\newenvironment<>{incrlabel@actionenv}{\@incrlabel@action@futureget#1}{}
+
+\def\@incrlabel@action@futureget<#1:#2>#3/#4/{%
+  \debug@message{actionenv: setting label /#4/=\@currentincr #2^^J}%
+  \incrlabel{#4}%
+  #3%
+}
+
+
+
+
+%% \incrref{label} - print the incr number associated with label in the current frame
+%% \incrref[framename]{label} - reference a different frame
+%% \incrref{label(offset)} - add a numerical offset, possibly negative.
 
 % The tricky part is the optional offset.  The idea is to use a helper function
 % to call the main parser (\def'd to expect parens) with trailing ().  If there
@@ -117,7 +168,7 @@
 \def\@gobbleparens#1(){}
   
 
-%% parse overlay spec with /incrlabel/ refs
+%% \parseincrspec - parse /incrlabel/ refs
 % \parseincrspec{spec} replaces incr labels within // chars with the
 % corresponding values returned by \incrref.
 
@@ -140,7 +191,7 @@
   }%
 }
 
-%% parse overlay spec with !(incr) actions
+%% \parseresetspec - parse !(incr) actions
 \def\parseresetspec#1{%
   \@parseresetspec{}#1!!% init: empty actions; input terminated by !!
 }
@@ -182,9 +233,31 @@
 }
 
 
+%% \parselabelspec - parse |= actions
+
+\def\parselabelspec#1{%
+  \@parselabelspec#1|=|\end%
+}
+% spec='foo' => foo |=|\end
+% spec='foo|=' => foo|= |=|\end
+% spec='foo|=|bar' => foo|=|bar |=|\end
+\def\@parselabelspec#1|=|#2\end{%
+  \@ifempty{#2}%
+    {#1}% original spec had no |=
+    {\@@parselabelspec{incrlabel@action\string @*|#1}#2\end}%
+}
+
+\def\@@parselabelspec#1#2=|\end{%
+  \@ifempty{#2}%
+      {#1}% original spec ended |=
+      {#1|\@copytopipex#2\end}% original spec had |=|, copy rest
+}%
+
+\def\@copytopipex#1|\end{#1}
+      
 
 %% 
-%% refer to names within overlay specs
+%% install overlay parsing in beamer commands
 %%
 
 % this involves some minor hackery: the idea is to redefine the macro
@@ -196,9 +269,10 @@
 % now replace it, calling the old one
 \def\beamer@masterdecode#1{%
   \edef\parsed@spec{\parseincrspec{#1}}%
-  \edef\parsed@spec@{\expandafter\parseresetspec\expandafter{\parsed@spec}}%
-  \debug@message{masterdecode: <#1> -> <\parsed@spec@>^^J}%
-  \x@\beamer@masterdecode@orig\x@{\parsed@spec@}%
+  \edef\parsed@spec{\expandafter\parseresetspec\expandafter{\parsed@spec}}%
+  \edef\parsed@spec{\expandafter\parselabelspec\expandafter{\parsed@spec}}%
+  \debug@message{masterdecode: <#1> -> <\parsed@spec>^^J}%
+  \x@\beamer@masterdecode@orig\x@{\parsed@spec}%
 }%
 
 % \againframe seems to need special treatment
@@ -313,6 +387,7 @@
 \newif\if@denyscanonly
 \def\framescanonlystate#1{\ifnum#1>0\relax\@denyscanonlyfalse\else\@denyscanonlytrue\fi}
 
+
 %% 
 %% a rudimentary increment-aware align environment
 %%
@@ -355,7 +430,7 @@
 \incraligndefaultspec
 
 
-%% the rest is internal
+%% the rest are internals
 
 % token register to collect the processed toks               
 \newtoks\@incraligntoks
