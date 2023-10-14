@@ -14,14 +14,18 @@
 }
 \beamincrdebug0
 
+% change category of X to other, so it can be used to separate arguments without interference from
+% Xs in the input.  this means we can't use X as a letter in this file.
+\catcode`X=12
+
 
 %% 
-%% \resetincr - (re)set the increment counter
+%% \resetincr[refspec] - (re)set the increment counter
 %%
 
 \def\resetincr{%
   \@ifnextchar<%
-    {\resetincr@angle<}% called as action
+    {\resetincr@angle}% called as action
     {\resetincr@normal}%
 }
 
@@ -29,9 +33,9 @@
   \@resetincr{\parseincrspec{#1}}%
 }
 
-% action form
+% action form -- not for users
 % beamer actions are documented to always call environments, but
-% sometimes call commands..
+% sometimes call commands instead.
 \newenvironment<>{resetincrenv}{\resetincr#1}{}
 
 \def\resetincr@angle<#1:#2>{% called as action
@@ -39,15 +43,13 @@
   \@resetincr{#2}% ignore the mode -- always "all"
 }
 \def\@resetincr#1{%
-% etoolbox version -- allows calculation, but local by default
+% etoolbox version -- allows inline calculation, but local by default
   \global\defcounter{beamerpauses}{#1+1}%
-%  \c@beamerpauses=\numexpr#1+1\relax%
-%  \setcounter{beamerpauses}{\numexpr#1+1\relax}%
 }
 
 
 %%
-%% \fromincr set the increment counter and place following text on corresponding slide
+%% \fromincr<refspec> - set the increment counter and place following text on corresponding slide
 %% 
   
 \def\fromincr<#1>{%
@@ -59,15 +61,14 @@
 %% \incrlabel - increment labels
 %%
 
-% \incrlabel{foo} save the current "increment number" in the label 'foo'
-% for reference with \incrref{foo} (and/or </foo/>).
+% \incrlabel{foo} save the current "increment number" in the label 'foo' for
+% reference with \incrref{foo} (and/or </foo/>).
 
-% The "increment number" is defined by the use of \pause and relative
-% overlay commands like \onslide<+->.  In general, it corresponds to
-% the slide on which text that follows a <.> increment would appear.
-% For technical reasons this is one less than the value of the
-% beamerpauses counter (unless that counter is 1).  This can cause
-% confusion if \pause and <+> constructs are mixed.
+% The "increment number" is defined by the use of \pause and relative overlay
+% commands like \onslide<+->.  In general, it corresponds to the slide on which
+% text that follows a <.> increment would appear.  For technical reasons this is
+% one less than the value of the beamerpauses counter (unless that counter is
+% 1).  This can cause confusion if \pause and <+> constructs are mixed.
 
 % the internal label name includes the frame label if one is given -- this helps
 % to keep the references valid across frames
@@ -81,19 +82,27 @@
   \fi%
 }
 
-%% \incrlabel{label}
-\newcommand\incrlabel[1]{%
-  \@incrlabel{\beamer@againname}{#1}
+%% \incrlabel{label} - set label to current increment
+%% \incrlabel<refspec>{label} - set label to increment evaluated from refspec
+
+\newcommand\incrlabel{%
+  \@ifnextchar<{\incrlabel@angle}{\incrlabel@normal}%
 }
-\newcommand\@incrlabel[2]{%
-  \x@\x@\x@\xdef\x@\csname beamincr@#1@#2\endcsname{\@currentincr}%
+\newcommand\incrlabel@normal[1]{%
+  \incrlabel@do{\beamer@againname}{#1}{\@currentincr}
+}
+\def\incrlabel@angle<#1>#2{%
+  \incrlabel@do{\beamer@againname}{#2}{\parseincrspec{#1}}
+}
+\newcommand\incrlabel@do[3]{%
+  \x@\x@\x@\xdef\x@\csname beamincr@#1@#2\endcsname{#3}%
 }
 
 %% \incrlabel@action is called using a |= action
-% the action is placed at the beginning of the calling spec, which
-% means it should be (almost) innermost.  Its argument contains only
-% {\uncover<spec>{text of action}}.  We need to read the label from
-% inside the text.
+% the action is placed at the beginning of the calling spec, which means it
+% should be (almost) innermost, its argument containing only
+% {\uncover<spec>{text of action}}.
+% We need to read the label from inside the text.
 
 % #1: spec
 % #2: arg = {\uncover<spec>{text}}
@@ -115,8 +124,12 @@
 \def\@incrlabel@action@parse#1<#2>#3/#4/#5X<#6:#7>X{%
   \@ifempty{#4}%
     {\PackageError{beamincr}{No label found for label assignment}{}}%
-    {\debug@message{action: setting label /#4/=\@currentincr #7^^J}}%
-  \incrlabel{#4}%
+    {\debug@message{action: setting label /#4/=\@currentincr+#7^^J}}%
+  \ifx*#7%
+    \incrlabel{#4}%
+  \else
+    \incrlabel</.(#7)/>{#4}%
+  \fi
   #1<#2>#3\@copytoslashslash#5%
 }
 \def\@copytoslashslash#1//{#1}
@@ -128,8 +141,12 @@
 \newenvironment<>{incrlabel@actionenv}{\@incrlabel@action@futureget#1}{}
 
 \def\@incrlabel@action@futureget<#1:#2>#3/#4/{%
-  \debug@message{actionenv: setting label /#4/=\@currentincr #2^^J}%
-  \incrlabel{#4}%
+  \debug@message{actionenv: <#1:#2> setting label /#4/=\@currentincr+#2^^J}%
+  \ifx*#2%
+    \incrlabel{#4}%
+  \else
+    \incrlabel</.(#2)/>{#4}%
+  \fi
   #3%
 }
 
@@ -235,25 +252,49 @@
 
 %% \parselabelspec - parse |= actions
 
+\catcode`\|=\active
+\let\@activepipe=|
+\catcode`\|=12 % other
+
+% parse | segements
 \def\parselabelspec#1{%
-  \@parselabelspec#1|=|\end%
+  \@parselabelspec@field#1|XX.\end%
 }
-% spec='foo' => foo |=|\end
-% spec='foo|=' => foo|= |=|\end
-% spec='foo|=|bar' => foo|=|bar |=|\end
-\def\@parselabelspec#1|=|#2\end{%
-  \@ifempty{#2}%
-    {#1}% original spec had no |=
-    {\@@parselabelspec{incrlabel@action\string @*|#1}#2\end}%
+% #1: first token of field
+% #2: rest of field
+% #3: rest of spec
+% #4: accumulated fields
+% #5: label action fields
+\def\@parselabelspec@field#1#2|#3X#4X#5#6\end{%
+  \ifx=#1% field starts with =
+    \ifx=#5 % already have a label
+      \PackageError{beamincr}{Only one label action allowed in spec}{}%
+    \else
+      \@ifempty{#3}% last field
+        {\@parselabelspec@field@label=#2()\end#4}%
+        {\@parselabelspec@field#3X#4X=#2\end}%
+    \fi
+  \else% not a label field
+    \@ifempty{#3}% last field
+      {\@parselabelspec@field@label#5#6()\end#4\string|#1#2}%
+      {\@parselabelspec@field#3X#4\string|#1#2X#5#6\end}%
+   \fi
 }
 
-\def\@@parselabelspec#1#2=|\end{%
-  \@ifempty{#2}%
-      {#1}% original spec ended |=
-      {#1|\@copytopipex#2\end}% original spec had |=|, copy rest
-}%
-
-\def\@copytopipex#1|\end{#1}
+\def\@parselabelspec@field@label#1#2(#3)#4\end{%
+  \if=#1% label found
+    \@ifempty{#2}% check there's nothing between = and offset
+      {\@ifempty{#3}% 
+        {incrlabel@action\string @*}% no offset
+        {incrlabel@action\string @#3}% place offset as number
+    }{%
+      \PackageError{beamincr}{Label action field contains extra text: #2}{}%
+    }%
+  \else% no label -- gobble the following | character
+    \x@\@gobblepipe%
+  \fi
+}
+\def\@gobblepipe#1|{}
       
 
 %% 
@@ -269,8 +310,8 @@
 % now replace it, calling the old one
 \def\beamer@masterdecode#1{%
   \edef\parsed@spec{\parseincrspec{#1}}%
-  \edef\parsed@spec{\expandafter\parseresetspec\expandafter{\parsed@spec}}%
-  \edef\parsed@spec{\expandafter\parselabelspec\expandafter{\parsed@spec}}%
+  \edef\parsed@spec{\x@\parseresetspec\x@{\parsed@spec}}%
+  \edef\parsed@spec{\x@\parselabelspec\x@{\parsed@spec}}%
   \debug@message{masterdecode: <#1> -> <\parsed@spec>^^J}%
   \x@\beamer@masterdecode@orig\x@{\parsed@spec}%
 }%
@@ -378,7 +419,7 @@
   \if@denyscanonly\else%
   \beamincr@protected@mode#1{%
     \@ifundefined{AddToHookNext}%
-      {\PackageWarning{beamincr}{\framescanonly is not supported in this LaTeX version}}%
+      {\PackageWarning{beamincr}{\framescanonly is not supported in this LaTe\stringX version}}%
       {\AddToHookNext{shipout/before}{\DiscardShipoutBox}}%
   }%
   \fi
@@ -434,9 +475,6 @@
 
 % token register to collect the processed toks               
 \newtoks\@incraligntoks
-
-% change category of X to other, so it can be used to terminate arguments
-\catcode`X=12
 
 % process body of environment
 \def\@incralign@nostar#1{\@incralign[amsalign]{#1}}
