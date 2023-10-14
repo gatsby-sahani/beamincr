@@ -310,6 +310,25 @@
 \def\@gobblepipe#1|{}
 
 
+%% \parsedefincspec - parse default spec inclusion
+
+% parse | segements
+\def\parsedefincspec#1{%
+  \@parsedefincspec@field#1|X%
+}
+% #1: first token of field
+% #2: rest of field
+% #3: rest of spec
+\def\de@ngle<#1>{#1}
+\def\@parsedefincspec@field#1#2|#3X{%
+  \ifx ~#1\x@\@firstoftwo\else\x@\@secondoftwo\fi% if field starts with @
+    {\x@\de@ngle\beamer@defaultospec}%insert default spec
+    {#1#2}%copy field
+  \@ifempty{#3}% last field
+    {}%
+    {|\@parsedefincspec@field#3X}%
+}
+
 %% 
 %% install overlay parsing in beamer commands
 %%
@@ -322,7 +341,8 @@
 \let\beamer@masterdecode@orig=\beamer@masterdecode
 % now replace it, calling the old one
 \def\beamer@masterdecode#1{%
-  \edef\parsed@spec{\parseincrspec{#1}}%
+  \edef\parsed@spec{\parsedefincspec{#1}}%
+  \edef\parsed@spec{\x@\parseincrspec\x@{\parsed@spec}}%
   \edef\parsed@spec{\x@\parseresetspec\x@{\parsed@spec}}%
   \edef\parsed@spec{\x@\parselabelspec\x@{\parsed@spec}}%
   \debug@message{masterdecode: <#1> -> <\parsed@spec>^^J}%
@@ -538,33 +558,33 @@
 \def\@incralign@field@optspec[#1][#2][#3]{%
 %  \debug@message{incraligntoamp@opt: spec: #3 | remain spec: #4^^J}%
   \@ifnextchar<%input starts with overlay spec char
-    {\@incraligntoamp[#1][#3]}%
-    {\@incraligntoamp[#1][#3]#2}%
+    {\@incraligntoamp[#1][#3][#2]}%
+    {\@incraligntoamp[#1][#3][#2]#2}%
 }
 
 % process field teminated by &
 % #1: full spec
 % #2: remaining spec
-% #3: spec for this field
-% #4: field contents
-% #5: remaining line
-% #6: remaining body
-\def\@incraligntoamp[#1][#2]<#3>#4&#5\\#6X{%
-%  \debug@message{incraligntoamp: spec:<#3> | field:(#4) | line:(#5) | remain:(#6)^^J}%
-  \@incraligntoks=\x@{\the\@incraligntoks \action<#3>{#4}}%
-  \@ifempty{#5}%
+% #3: default spec for this field
+% #4: spec for this field
+% #5: field contents
+% #6: remaining line
+% #7: remaining body
+\def\@incraligntoamp[#1][#2][#3]<#4>#5&#6\\#7X{%
+  \@incraligntoks=\x@{\the\@incraligntoks \def\beamer@defaultospec{#3}\action<#4>{#5}}%
+  \@ifempty{#6}%
      {% reached last field on line
-        \@ifempty{#6}{}% no more lines - we're done
+        \@ifempty{#7}{}% no more lines - we're done
           {% else
             \@incraligntoks=\x@{\the\@incraligntoks \\}%
-            \@incralignbreak@checkopt#6X#1X% check for optional arg after \\
+            \@incralignbreak@checkopt#7X#1X% check for optional arg after \\
           }%
      }%
      {% else more fields
         \@incraligntoks=\x@{\the\@incraligntoks &}%
         \@ifempty{#2}% reuse fullspec if we've exhausted the current one
-        {\@incralign@process@field[#1]#1&X#5\\#6X}%
-        {\@incralign@process@field[#1]#2X#5\\#6X}%
+        {\@incralign@process@field[#1]#1&X#6\\#7X}%
+        {\@incralign@process@field[#1]#2X#6\\#7X}%
      }%
 }
 
