@@ -392,12 +392,14 @@ increment counter by multiple (or negative) steps.
 
 The reset only takes effect after the overlay specification has been interpreted
 and before the body is set.  So any |+| or |.| references will be relative to
-the increment in effect \emph{before} the |\action|.
+the increment in effect \emph{before} the |\action|.  However, the special
+increment label |/!/| can be used to access the most recent reset.
 \example
 \begin{verbatim}
   \resetincr
   \action<!/.(2)/-|alert@.>{alert too early}
   \action<!/.(2)/->{\alert<.>{alert when uncovered}}
+  \action<!/.(2)/-|alert@/!/>{alert when uncovered}
 \end{verbatim}
 It is possible to issue multiple |!| commands in one overlay spec but only the
 last of them will take effect.
@@ -445,6 +447,26 @@ environment).  Second, if there happens to be one more or more |/| characters in
 the argument to the action, the text between them (or from a single |/| to the
 end) will be interpreted as a label, unless an explicit |//| pair appears first.
 You have been warned!
+
+\subsection{Extending default overlay or action specifications}
+
+By default, explicit overlay or action specifications override any defaults that
+might apply.  It may sometimes be convenient to instead extend the default.  The
+|~| spec can be used to add the current default spec fields into an explicit
+overlay spec.
+\example
+\begin{verbatim}
+  \begin{itemize}[<+-| alert@+|=>]
+  \item/ap/ Apple \item/pe/ Peach \item/pl/ Plum \item/or/ Orange
+  \end{itemize}
+  \begin{itemize}[<alert@/!/>]
+  \item<!/pe/-|~> yellow \item<!/or/-|~> orange \item<!/ap/-|~>green \item<!/pl/-|~> purple
+  \end{itemize}
+\end{verbatim}
+Within |align| and similar environments (\cref{sec:ams}), a |~| will incorporate
+the field-specific default.
+
+
 
 \section{\AmSTeX\ align environments}\label{sec:ams}
 
