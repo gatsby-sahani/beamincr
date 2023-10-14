@@ -123,31 +123,35 @@
 % #7: numeric spec to = action
 \def\@incrlabel@action@parse#1<#2>#3/#4/#5X<#6:#7>X{%
   \@ifempty{#4}%
-    {\PackageError{beamincr}{No label found for label assignment}{}}%
-    {\debug@message{action: setting label /#4/=\@currentincr+#7^^J}}%
-  \ifx*#7%
-    \incrlabel{#4}%
-  \else
-    \incrlabel</.(#7)/>{#4}%
-  \fi
-  #1<#2>#3\@copytoslashslash#5%
+    {#1<#2>{#3}}% ignore silently if label missing
+    {\debug@message{action: setting label /#4/=\@currentincr+#7^^J}%
+      \ifx*#7%
+        \incrlabel{#4}%
+      \else
+        \incrlabel</.(#7)/>{#4}%
+      \fi
+      #1<#2>{#3\@copytoslashslash#5}%
+    }
 }
 \def\@copytoslashslash#1//{#1}
 
-% the environment form will be called as
-% \begin{incrlabel@actionenv}<spec>\begin{uncoverenv}<spec>text\end...
-% In this case, we just read to the first /.../.  If there isn't one,
-% this will create a (hopefully interpretable) error.
+% the environment form will be called
+% as \begin{incrlabel@actionenv}<spec>\begin{uncoverenv}<spec>text\end...  In
+% this case, we just read to the first /.../.  If there isn't one this will
+% generate a (somewhat interpretable) error.
 \newenvironment<>{incrlabel@actionenv}{\@incrlabel@action@futureget#1}{}
 
 \def\@incrlabel@action@futureget<#1:#2>#3/#4/{%
-  \debug@message{actionenv: <#1:#2> setting label /#4/=\@currentincr+#2^^J}%
-  \ifx*#2%
-    \incrlabel{#4}%
-  \else
-    \incrlabel</.(#2)/>{#4}%
-  \fi
-  #3%
+  \@ifempty{#4}%
+    {#3}% ignore silently if label missing
+    {\debug@message{actionenv: <#1:#2> setting label /#4/=\@currentincr+#2^^J}%
+      \ifx*#2%
+        \incrlabel{#4}%
+      \else
+        \incrlabel</.(#2)/>{#4}%
+      \fi
+      #3%
+    }
 }
 
 
