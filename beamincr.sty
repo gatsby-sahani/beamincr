@@ -23,6 +23,7 @@
 %% \resetincr[refspec] - (re)set the increment counter
 %%
 
+\newcounter{beamincr@lastreset}
 \def\resetincr{%
   \@ifnextchar<%
     {\resetincr@angle}% called as action
@@ -45,6 +46,7 @@
 \def\@resetincr#1{%
 % etoolbox version -- allows inline calculation, but local by default
   \global\defcounter{beamerpauses}{#1+1}%
+  \global\defcounter{beamincr@lastreset}{#1}%
 }
 
 
@@ -180,15 +182,19 @@
            {\@@incrref[#1]#2(0)}%
            {\@@incrref[#1]#2(#3)\@gobbleparens}%
 }
+% avoid expansion of ! refs until the bitter end
+\protected\def\beamincr@lastreset{\the\c@beamincr@lastreset}
 \def\@@incrref[#1]#2(#3){%
   \if.#2% this breaks if the incrlabel is .foo.  fixes all seem to
         % require additional packages
     \number \numexpr \@currentincr + #3\relax%
-  \else%
+  \else\if!#2%
+   \beamincr@lastreset%
+  \else
     \@ifundefined{beamincr@#1@#2}%
                  {\PackageError{beamincr}{No label "#2" in frame "#1"}{}}%
                  {\number \numexpr \x@\csname beamincr@#1@#2\endcsname + #3\relax}%
-  \fi%
+  \fi\fi%
 }
 \def\@gobbleparens#1(){}
   
@@ -302,7 +308,7 @@
   \fi
 }
 \def\@gobblepipe#1|{}
-      
+
 
 %% 
 %% install overlay parsing in beamer commands
