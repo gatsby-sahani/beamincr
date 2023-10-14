@@ -286,11 +286,18 @@ while progressing through a list of bullet points.  Or one might want to
 redisplay certain slides in the frame with |\afterframe| or |\handoutframe|
 (described below).
 
-\begin{command}{\incrlabel \marg{label}}
-  This command attaches the current increment number to the label \meta{label}.
-  Once defined, the labelled increment can be recovered in (almost) any overlay
-  spec using the constructs discussed below.  The \meta{label} can contain most
-  characters, but should not start with a `|.|'  or `|!|'.
+\begin{command}{\incrlabel\sarg{incr}\marg{label}}
+  By default, this command attaches the current increment number to the label
+  \meta{label}.  Once defined, the labelled increment can be recovered in
+  (almost) any overlay spec using the constructs discussed below.  The
+  \meta{label} can contain most characters, but should not start with any of the
+  characters |.!=|.
+
+  If the optional \meta{incr} is provided, \meta{label} is set to its value.
+  The restrictions on \meta{incr} are the same as for |\resetincr|: it can be a
+  number or an increment specification.  This allows forms like
+  |\incrlabel</.(2)/>{x}| to set |x| to the current increment + 2.  See the
+  discussion of increment specifications below.
 \end{command}
 
 \begin{command}{\incrref \marg{incr spec}}
@@ -342,10 +349,11 @@ An example:
 \end{verbatim}
 
 Note that of commands discussed here, |\incrref| expects an increment
-specification (i.e. |label(offset)|), while |\fromincr| and |\resetincr| expect
-a restricted overlay specification that might include an increment specification
-(e.g. |/label(offset)/|) or just a number.  Standard overlay-aware commands
-should all accept overlay specifications that include increment specs.
+specification (i.e. |label(offset)|), while |\resetincr|, |\fromincr| and
+|\incrlabel| expect a restricted overlay specification that might be an
+increment specification in |//| (e.g. |/label(offset)/|) or just a number.
+Standard overlay-aware commands should all accept overlay specifications that
+include increment specs.
 
 One \beamer\ command (slightly patched in this package) with which named
 increments are particularly useful is |\againframe|.  So \example
@@ -360,7 +368,7 @@ There is also a similar new command called |\handoutframe| to render more than
 one overlay from a frame in \texttt{handout} or similar modes that, by default,
 just show a single slide with all the overlays collapsed.  See \cref{sec:helper}.
 
-\subsection{Setting increments in overlay specifications}
+\subsection{Setting increments in overlay action specifications}
 
 It is possible to use the \beamer\ syntax for actions in overlays to reset the
 increment number.  This can be done using the explicit |resetincr@|\meta{increment} action or
@@ -391,17 +399,54 @@ the increment in effect \emph{before} the |\action|.
   \action<!/.(2)/-|alert@.>{alert too early}
   \action<!/.(2)/->{\alert<.>{alert when uncovered}}
 \end{verbatim}
-It's possible to issue multiple |!| commands in one overlay spec but only the
+It is possible to issue multiple |!| commands in one overlay spec but only the
 last of them will take effect.
 
 According to the user guide, \beamer\ actions are only supported by overlay
 specifications to |\action|, |\item|, the |actionenv| environment and block
-environments like |block| and |theorem|.  In the absence of any action
-spefications, |\action| acts like |\uncover| (or |\onslide| with an argument).
-Note that |\fromslide| (\cref{sec:setting}) can act like an |\onslide|
-declaration while setting the increment.
+environments like |block| and |theorem|.  \texttt{beamincr} adds fields of
+incremental math alignment environments to this list (see \cref{sec:ams}).  In
+the absence of any action specifations, |\action| acts like |\uncover| (or
+|\onslide| with an argument).  Note that |\fromslide| (\cref{sec:setting}) can
+act like an |\onslide| declaration while setting the increment.
 
-\section{\AmSTeX\ align environments}
+\subsection{Assigning labels from overlay action specifications}
+
+The \verb^<...|=^\opt{\texttt{(}\meta{offset}\texttt{)}}\verb^| ...>^ syntax can be used to assign
+a label using an action specification.  The name of the label to be assigned be
+enclosed in \texttt{//}s within the \emph{argument} of the |\action| (or |\item|
+\dots)\footnote{\beamer\ actions don't make it possible to pass a text argument
+  to the handler.}  The label is assigned to the increment number after any
+\texttt{+} or \texttt{!} actions have been interpreted, as though it was called
+with |\incrlabel| in place.  Thus in this code \example
+\begin{verbatim}
+  \resetincr[3]
+  \action<!/.(2)/>{\incrlabel{x}action text}
+  \resetincr[3]
+  \action<!/.(2)/|=>{/x/action text}
+  \resetincr[3]
+  \action<!/.(3)/>{\incrlabel</.(-1)/>{x}action text}
+  \resetincr[3]
+  \action<!/.(3)/|=(-1)>{/x/action text}
+\end{verbatim}
+the first two action calls set the label \texttt{x} to 5.  The latter two
+illustrate the use of assignment offsets: if \texttt{=} is followed by a number
+in parentheses, this is treated as an offset to add to the current increment at
+assignment, in the same way as indicated by the optional |<|\meta{incr}|>|
+argument to |\incrlabel|.
+
+If no |/label/| is found or if the name is empty, the action tries to do nothing
+quietly.  This makes it possible to use an |=| in a default spec, but only
+assign a label to some of the steps.  However, this behaviour comes with
+warnings, and should be used with caution.  First, because of the way \beamer's
+internals work, it is not currently possible to omit the |//| in an |\item|,
+although the label can be empty (omission is fine in an |incralign|
+environment).  Second, if there happens to be one more or more |/| characters in
+the argument to the action, the text between them (or from a single |/| to the
+end) will be interpreted as a label, unless an explicit |//| pair appears first.
+You have been warned!
+
+\section{\AmSTeX\ align environments}\label{sec:ams}
 
 The \texttt{align} and \texttt{align*} environments from the \texttt{amsmath}
 package are useful for multiple or multiline equations, but don't really work
@@ -409,7 +454,6 @@ well with overlays.  The current package introduces a partial fix for this,
 although their are remaining fragilities that need to be worked around.  It
 should be straightforward to extend the approach used here to other
 \texttt{amsmath} equation environments if desired.
-
 
 \begin{environment}{{incralign[*]}\opt{\texttt{[<}\meta{spec1}\texttt{>\&<}\meta{spec2}\texttt{>\& ...]}}}
     Pre-process the input to |align[*]| to place an |\action<>{}| command around
