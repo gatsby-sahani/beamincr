@@ -182,14 +182,19 @@
            {\@@incrref[#1]#2(0)}%
            {\@@incrref[#1]#2(#3)\@gobbleparens}%
 }
-% avoid expansion of ! refs until the bitter end
-\protected\def\beamincr@lastreset{\the\c@beamincr@lastreset}
+
+% avoid expansion of ! refs until the bitter end using \protected\def
+% contains a horrible hack to work around beamer internals:
+%   at one point beamer has \futurelet \next=\beamincr@lastresest, and calls \ifcat\next a, 
+%   which thus evaluates \beamincr@lastresest{a}, which fails as a is not a number!
+% so we test specifically for this case -- fortunately, beamer should follow the false
+% branch of its test anyway, so there's no further impact.
+\protected\def\beamincr@lastreset#1{\if a#1\else\the\numexpr #1+\c@beamincr@lastreset\relax\fi}
 \def\@@incrref[#1]#2(#3){%
-  \if.#2% this breaks if the incrlabel is .foo.  fixes all seem to
-        % require additional packages
+  \if.#2% this breaks if the incrlabel is .foo.  fixes all seem to require additional packages
     \number \numexpr \@currentincr + #3\relax%
   \else\if!#2%
-   \beamincr@lastreset%
+   \beamincr@lastreset{#3}%
   \else
     \@ifundefined{beamincr@#1@#2}%
                  {\PackageError{beamincr}{No label "#2" in frame "#1"}{}}%
