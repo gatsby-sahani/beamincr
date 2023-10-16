@@ -189,7 +189,7 @@
 %   which thus evaluates \beamincr@lastresest{a}, which fails as a is not a number!
 % so we test specifically for this case -- fortunately, beamer should follow the false
 % branch of its test anyway, so there's no further impact.
-\protected\def\beamincr@lastreset#1{\if a#1\else\the\numexpr #1+\c@beamincr@lastreset\relax\fi}
+\protected\def\beamincr@lastreset#1{\if a#1 0a\else\the\numexpr #1+\c@beamincr@lastreset\relax\fi}
 \def\@@incrref[#1]#2(#3){%
   \if.#2% this breaks if the incrlabel is .foo.  fixes all seem to require additional packages
     \number \numexpr \@currentincr + #3\relax%
