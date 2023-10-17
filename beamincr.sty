@@ -2,17 +2,31 @@
 % enhancements to beamer increment handling
 
 \RequirePackage{etoolbox} % beamer uses this anyway
+% abbreviate \expandafter
 \let\x@=\expandafter
 
 % choose the first line to get debugging messages on screen and log
 \def\beamincrdebug#1{%
-  \ifnum #1 > 0\relax
+  \ifnum #1 > 0 
     \def\debug@message{\message}
   \else
     \def\debug@message{\@gobble}
   \fi
 }
 \beamincrdebug0
+
+%% 
+%% allow references to future labels
+%%
+
+% if true, (currently) undefined labels will resolve to 0 rather than raising an error
+\newif\if@allowundefincrref
+\def\framescanonlystate#1{\ifnum#1>0\relax\@denyscanonlyfalse\else\@denyscanonlytrue\fi}
+\newcommand\allowundefinedincrrefs[1][1]{%
+  \ifnum#1>0\relax\@allowundefincrreftrue\else\@allowundefincrreffalse\fi%
+}
+
+
 
 % change category of X to other, so it can be used to separate arguments without interference from
 % Xs in the input.  this means we can't use X as a letter in this file.
@@ -77,7 +91,7 @@
 
 %% current increment = max(1,\value{beamerpauses}-1) as a numeric value
 \newcommand\@currentincr{%
-  \ifnum 1 < \c@beamerpauses%
+  \ifnum 1 < \c@beamerpauses %
     \number\numexpr\c@beamerpauses - 1\relax%
   \else%
     \thebeamerpauses%
@@ -184,24 +198,38 @@
 }
 
 % avoid expansion of ! refs until the bitter end using \protected\def
-% contains a horrible hack to work around beamer internals:
-%   at one point beamer has \futurelet \next=\beamincr@lastresest, and calls \ifcat\next a, 
-%   which thus evaluates \beamincr@lastresest{a}, which fails as a is not a number!
-% so we test specifically for this case -- fortunately, beamer should follow the false
-% branch of its test anyway, so there's no further impact.
-\protected\def\beamincr@lastreset#1{\if a#1 0a\else\the\numexpr #1+\c@beamincr@lastreset\relax\fi}
+\protected\def\beamincr@lastreset#1{%
+  % At one point in its internals beamer \futurelets \next=\beamincr@lastresest, and calls
+  % \ifcat\next a, which evaluates \beamincr@lastresest{a}, which fails as `a is not a number.  Test
+  % specifically for this case.
+  \if a#1 0a\else
+    \ifnum\c@beamincr@lastreset=0 % ignore offset if reset to 0
+      0%
+    \else
+      \the\numexpr #1+\c@beamincr@lastreset\relax%
+    \fi
+  \fi
+}
 \def\@@incrref[#1]#2(#3){%
   \if.#2% this breaks if the incrlabel is .foo.  fixes all seem to require additional packages
-    \number \numexpr \@currentincr + #3\relax%
+    \@@incrref@offset{\@currentincr}{#3}%
+  % \number \numexpr \@currentincr + #3\relax%
   \else\if!#2%
    \beamincr@lastreset{#3}%
   \else
     \@ifundefined{beamincr@#1@#2}%
-                 {\PackageError{beamincr}{No label "#2" in frame "#1"}{}}%
-                 {\number \numexpr \x@\csname beamincr@#1@#2\endcsname + #3\relax}%
+      {\if@allowundefincrref\x@\@firstoftwo\else\x@\@secondoftwo\fi
+          {\@@incrref@offset{0}{0}}%
+          {\PackageError{beamincr}{No label #2 in frame #1}{}}%
+      }%}%
+      {\x@\@@incrref@offset\x@{\csname beamincr@#1@#2\endcsname}{#3}}%
   \fi\fi%
 }
 \def\@gobbleparens#1(){}
+
+% no offset on 0 increments
+\def\@@incrref@offset#1#2{\ifnum#1=0 \x@\@firstoftwo\else\x@\@secondoftwo\fi{0}{\number\numexpr #1+#2\relax}}
+
   
 
 %% \parseincrspec - parse /incrlabel/ refs
@@ -222,10 +250,47 @@
 \def\@parseincrspec#1/#2/{%
   #1% copy input to first /
   \@ifempty{#2}{}{% if empty we're done
-    \@incrref[\beamer@againname]#2()% else resolve this ref
+    \@parseincrspec@handledash@protectoffset#2()X%
     \@parseincrspec% keep going
+    % \@incrref[\beamer@againname]#2()% else resolve this ref
+    % \@parseincrspec% keep going
   }%
 }
+
+
+\def\@zeroorempty#1{\ifnum0=0#1 \x@\@firstoftwo\else\x@\@secondoftwo\fi{0}{}}
+
+% need to parse any offet, in case its negative (and so has a '-')
+\def\@parseincrspec@handledash@protectoffset#1(#2)#3X{%
+  \@ifempty{#2}{%
+    \@parseincrspec@handledash()X#1-X-%
+  }{%
+    \x@\@parseincrspec@handledash\@xcopytoparens{(#2)()X#1}#3-X-%
+  }%
+}
+% de{}s first arg
+\def\@xcopytoparens#1#2(){#1#2}
+
+% foo -> Xfoo-X-  -> #2=foo #3=X
+% -foo -> X-foo-X- ->#2={} #3=foo remaining X-
+% foo- -> Xfoo--X- ->#2=foo #3={} remaining X-
+\def\@parseincrspec@handledash#1X#2-#3-{%
+  \@ifempty{#2}{% leading -, label in #3, gobble X-
+    \@zeroorempty{\@incrref[\beamer@againname]#3#1}-\@incrref[\beamer@againname]#3#1%
+    \@gobblexdash%
+  }{%
+    \@ifempty{#3}{% trailing -, label in #3, gobble X-
+      \@incrref[\beamer@againname]#2#1-\@zeroorempty{\@incrref[\beamer@againname]#2#1}%
+      \@gobblexdash%
+    }{% no -, label in #2
+      \@incrref[\beamer@againname]#2#1}% just resolve this ref
+    }%
+}
+\def\@gobblexdash#1X-{}
+
+
+
+
 
 %% \parseresetspec - parse !(incr) actions
 \def\parseresetspec#1{%
@@ -464,7 +529,7 @@
 }
 
 \newif\if@denyscanonly
-\def\framescanonlystate#1{\ifnum#1>0\relax\@denyscanonlyfalse\else\@denyscanonlytrue\fi}
+\def\framescanonlystate#1{\ifnum#1>0 \@denyscanonlyfalse\else\@denyscanonlytrue\fi}
 
 
 %% 
