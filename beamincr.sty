@@ -21,7 +21,6 @@
 
 % if true, (currently) undefined labels will resolve to 0 rather than raising an error
 \newif\if@allowundefincrref
-\def\framescanonlystate#1{\ifnum#1>0\relax\@denyscanonlyfalse\else\@denyscanonlytrue\fi}
 \newcommand\allowundefinedincrrefs[1][1]{%
   \ifnum#1>0\relax\@allowundefincrreftrue\else\@allowundefincrreffalse\fi%
 }
@@ -59,7 +58,9 @@
 }
 \def\@resetincr#1{%
 % etoolbox version -- allows inline calculation, but local by default
-  \global\defcounter{beamerpauses}{#1+1}%
+  \ifnum#1>0 \x@\@firstoftwo\else\x@\@secondoftwo\fi%
+    {\global\defcounter{beamerpauses}{#1+1}}%
+    {\global\defcounter{beamerpauses}{#1}}%
   \global\defcounter{beamincr@lastreset}{#1}%
 }
 
@@ -252,15 +253,13 @@
   \@ifempty{#2}{}{% if empty we're done
     \@parseincrspec@handledash@protectoffset#2()X%
     \@parseincrspec% keep going
-    % \@incrref[\beamer@againname]#2()% else resolve this ref
-    % \@parseincrspec% keep going
   }%
 }
 
 
-\def\@zeroorempty#1{\ifnum0=0#1 \x@\@firstoftwo\else\x@\@secondoftwo\fi{0}{}}
+\def\@zer@orempty#1{\ifnum0=0#1 \x@\@firstoftwo\else\x@\@secondoftwo\fi{0}{}}
 
-% need to parse any offet, in case its negative (and so has a '-')
+% need to parse any offet, in case it's negative (and so has a '-')
 \def\@parseincrspec@handledash@protectoffset#1(#2)#3X{%
   \@ifempty{#2}{%
     \@parseincrspec@handledash()X#1-X-%
@@ -276,7 +275,7 @@
 % foo- -> Xfoo--X- ->#2=foo #3={} remaining X-
 \def\@parseincrspec@handledash#1X#2-#3-{%
   \@ifempty{#2}{% leading -, label in #3, gobble X-
-    \@zeroorempty{\@incrref[\beamer@againname]#3#1}-\@incrref[\beamer@againname]#3#1%
+    \@zer@orempty{\@incrref[\beamer@againname]#3#1}-\@incrref[\beamer@againname]#3#1%
     \@gobblexdash%
   }{%
     \@ifempty{#3}{% trailing -, label in #3, gobble X-
@@ -419,13 +418,30 @@
   \x@\beamer@masterdecode@orig\x@{\parsed@spec}%
 }%
 
-% \againframe seems to need special treatment
-\let\beamer@againframe@orig=\beamer@againframe
-\def\beamer@againframe<#1>{\beamer@againframe@orig<\parseincrspec{#1}>}
 
 %% 
-%% \againframe variants
+%% \againframe and variants
 %%
+
+
+%% modify the beamer code to:
+% (1) parse incrrefs  (but no other extensions) in the frame spec
+% (2) turn  framescanonly off and back on
+
+% \def\againframe{\@ifnextchar<{\beamer@againframe}{\beamer@againframe<*>}}
+% \def\beamer@againframe<#1>{\@ifnextchar[{\beamer@@againframe<#1>}{\beamer@@againframe<#1>[]}}
+% \def\beamer@@againframe<#1>[{\@ifnextchar<{\beamer@@@@againframe<#1>[}{\beamer@@@againframe<#1>[<*>][}}
+% \def\beamer@@@@againframe<#1>[#2]{\@ifnextchar[{\beamer@@@againframe<#1>[{#2}]}{\beamer@@@againframe<#1>[{#2}][]}}
+
+\let\beamer@@@againframe@orig=\beamer@@@againframe
+\def\beamer@@@againframe<#1>[#2][#3]#4{%
+  \edef\@scanstate{\@ifallowscanonlystate}%
+  \allowframescanonly0%
+  \beamer@@@againframe@orig<\parseincrspec{#1}>[#2][#3]{#4}%
+  \x@\allowframescanonly\@scanstate%
+}
+
+
 
 %% Access the *contents* of a previously defined frame.  Allows more fine-grained access, changes etc.
 \newcommand{\againframebody}[1]{%
@@ -499,7 +515,7 @@
     \begingroup
     \def\beamer@currentmode{beamer}%
     % we've parsed all the arguments, so just call the inner function
-    \beamer@@@againframe<\parseincrspec{#2}>[{#3}][#4]{#5}%
+    \beamer@@@againframe<#2>[{#3}][#4]{#5}%
     \endgroup
 %    \edef\beamer@currentmode{\save@currentmode}%
   }%
@@ -519,7 +535,7 @@
 \protected\def\beamincr@protected@mode{\mode}
 
 \newcommand<>\framescanonly{%
-  \if@denyscanonly\else%
+  \if@allowscanonly%
   \beamincr@protected@mode#1{%
     \@ifundefined{AddToHookNext}%
       {\PackageWarning{beamincr}{\framescanonly is not supported in this LaTe\stringX version}}%
@@ -528,9 +544,10 @@
   \fi
 }
 
-\newif\if@denyscanonly
-\def\framescanonlystate#1{\ifnum#1>0 \@denyscanonlyfalse\else\@denyscanonlytrue\fi}
-
+\newif\if@allowscanonly
+\def\allowframescanonly#1{\ifnum#1>0 \@allowscanonlytrue\else\@allowscanonlyfalse\fi}
+\@allowscanonlytrue
+\def\@ifallowscanonlystate{\if@allowscanonly1\else0\fi}
 
 %% 
 %% a rudimentary increment-aware align environment
