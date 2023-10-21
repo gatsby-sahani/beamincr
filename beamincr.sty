@@ -124,11 +124,11 @@
 
 % #1: spec
 % #2: arg = {\uncover<spec>{text}}
-\def\incrlabel@action<#1>#2{%
+\long\def\incrlabel@action<#1>#2{%
   \x@\@incrlabel@action@parse\@incrlabel@action@unbracearg#2//X<#1>X%
 }
 % expose contents of grouped text arg
-\def\@incrlabel@action@unbracearg#1<#2>#3{%
+\long\def\@incrlabel@action@unbracearg#1<#2>#3{%
   #1<#2>#3% removes {} from #3
 }
 
@@ -139,7 +139,7 @@
 % #5: text after label
 % #6: mode spec to = action (always 'all')
 % #7: numeric spec to = action
-\def\@incrlabel@action@parse#1<#2>#3/#4/#5X<#6:#7>X{%
+\long\def\@incrlabel@action@parse#1<#2>#3/#4/#5X<#6:#7>X{%
   \@ifempty{#4}%
     {}%#1<#2>{#3 \@dropslashslashxx#5XX}}% ignore silently if label missing
     {\debug@message{action: setting label /#4/=\@currentincr+#7^^J}%
@@ -151,11 +151,11 @@
     }%
     \@ifempty{#5}%
       {\def\remain{}}%  no /s in input: terminal //s removed
-      {\edef\remain{\expandonce{\@dropslashslashxx#5XX}}}% /{}/ in input, copy remaining arg and drop terminator
-    \def\put##1{#1<#2>{#3##1}}%
+      {\long\edef\remain{\expandonce{\@dropslashslashxx#5XX}}}% /{}/ in input, copy remaining arg and drop terminator
+    \long\def\put##1{#1<#2>{#3##1}}%
     \x@\put\x@{\remain}%
 }
-\def\@dropslashslashxx#1//XX{#1}
+\long\def\@dropslashslashxx#1//XX{#1}
 
 % the environment form will be called
 % as \begin{incrlabel@actionenv}<spec>\begin{uncoverenv}<spec>text\end...
@@ -545,8 +545,9 @@
 }
 
 \newif\if@allowscanonly
-\def\allowframescanonly#1{\ifnumgreat{#1}{0}{\@allowscanonlytrue}{\@allowscanonlyfalse}}
+\def\allowframescanonly#1{\ifnumgreater{#1}{0}{\@allowscanonlytrue}{\@allowscanonlyfalse}}
 \@allowscanonlytrue
+\def\@ifallowscanonlystate{\if@allowscanonly1\else0\fi}
 
 
 
@@ -648,9 +649,9 @@
 }
   
 
-% \setincrementalenvspec{name}<spec>
-\def\setincrementalenvspec#1<#2>{%
-  \gcsdef{@incralign@#1@defaultspec}{<#2>}%
+% \setincrementalenvspec{name}{<spec1>&<spec2>...}
+\def\setincrementalenvspec#1#2{%
+  \gcsdef{@incralign@#1@defaultspec}{#2}%
 }
 
 % 
