@@ -9,11 +9,9 @@
 
 % choose the first line to get debugging messages on screen and log
 \def\beamincrdebug#1{%
-  \ifnum #1 > 0 
-    \def\debug@message{\message}
-  \else
-    \def\debug@message{\@gobble}
-  \fi
+  \ifnumgreater{#1}{0}%
+    {\gdef\debug@message{\message}}
+    {\gdef\debug@message{\@gobble}}
 }
 \beamincrdebug0
 
@@ -24,7 +22,7 @@
 % if true, (currently) undefined labels will resolve to 0 rather than raising an error
 \newif\if@allowundefincrref
 \newcommand\allowundefinedincrrefs[1][1]{%
-  \ifnum#1>0\relax\@allowundefincrreftrue\else\@allowundefincrreffalse\fi%
+  \ifnumgreater{#1}{0}{\@allowundefincrreftrue}{\@allowundefincrreffalse}%
 }
 
 
@@ -59,8 +57,8 @@
   \@resetincr{#2}% ignore the mode -- always "all"
 }
 \def\@resetincr#1{%
-% etoolbox version -- allows inline calculation, but local by default
-  \ifnum#1>0 \x@\@firstoftwo\else\x@\@secondoftwo\fi%
+% etoolbox defcounter allows inline calculation, but local by default
+  \ifnumgreater{#1}{0}%
     {\global\defcounter{beamerpauses}{#1+1}}%
     {\global\defcounter{beamerpauses}{#1}}%
   \global\defcounter{beamincr@lastreset}{#1}%
@@ -94,12 +92,13 @@
 
 %% current increment = max(1,\value{beamerpauses}-1) as a numeric value
 \newcommand\@currentincr{%
-  \ifnum 1 < \c@beamerpauses %
-    \number\numexpr\c@beamerpauses - 1\relax%
-  \else%
-    \thebeamerpauses%
-  \fi%
+  \ifnumless{1}{\c@beamerpauses}%
+    {\number\numexpr\c@beamerpauses - 1\relax}%
+    {\thebeamerpauses}%
 }
+
+%% user accessible version -- smells like a counter
+\newcommand\theincrement{\@currentincr}
 
 %% \incrlabel{label} - set label to current increment
 %% \incrlabel<refspec>{label} - set label to increment evaluated from refspec
@@ -108,10 +107,10 @@
   \@ifnextchar<{\incrlabel@angle}{\incrlabel@normal}%
 }
 \newcommand\incrlabel@normal[1]{%
-  \incrlabel@do{\beamer@againname}{#1}{\@currentincr}
+  \incrlabel@do{\beamer@againname}{#1}{\@currentincr}%
 }
 \def\incrlabel@angle<#1>#2{%
-  \incrlabel@do{\beamer@againname}{#2}{\parseincrspec{#1}}
+  \incrlabel@do{\beamer@againname}{#2}{\parseincrspec{#1}}%
 }
 \newcommand\incrlabel@do[3]{%
   \x@\x@\x@\xdef\x@\csname beamincr@#1@#2\endcsname{#3}%
@@ -146,13 +145,15 @@
     {\debug@message{action: setting label /#4/=\@currentincr+#7^^J}%
       \ifx*#7%
         \incrlabel{#4}%
-      \else
+      \else%
         \incrlabel</.(#7)/>{#4}%
-      \fi
+      \fi%
     }%
-  \@ifempty{#5}%
-    {#1<#2>{#3}}% no /s in input: terminal //s removed
-    {#1<#2>{#3\@dropslashslashxx#5XX}}% /{}/ in input, copy remaining arg and drop terminator
+    \@ifempty{#5}%
+      {\def\remain{}}%  no /s in input: terminal //s removed
+      {\edef\remain{\expandonce{\@dropslashslashxx#5XX}}}% /{}/ in input, copy remaining arg and drop terminator
+    \def\put##1{#1<#2>{#3##1}}%
+    \x@\put\x@{\remain}%
 }
 \def\@dropslashslashxx#1//XX{#1}
 
@@ -206,11 +207,8 @@
   % \ifcat\next a, which evaluates \beamincr@lastresest{a}, which fails as `a is not a number.  Test
   % specifically for this case.
   \if a#1 0a\else
-    \ifnum\c@beamincr@lastreset=0 % ignore offset if reset to 0
-      0%
-    \else
-      \the\numexpr #1+\c@beamincr@lastreset\relax%
-    \fi
+    \ifnumequal{\c@beamincr@lastreset}{0}% ignore offset if reset to 0
+      {0}{\the\numexpr #1+\c@beamincr@lastreset\relax}%
   \fi
 }
 \def\@@incrref[#1]#2(#3){%
@@ -231,7 +229,7 @@
 \def\@gobbleparens#1(){}
 
 % no offset on 0 increments
-\def\@@incrref@offset#1#2{\ifnum#1=0 \x@\@firstoftwo\else\x@\@secondoftwo\fi{0}{\number\numexpr #1+#2\relax}}
+\def\@@incrref@offset#1#2{\ifnumequal{#1}{0}{0}{\number\numexpr #1+#2\relax}}
 
   
 
@@ -547,9 +545,8 @@
 }
 
 \newif\if@allowscanonly
-\def\allowframescanonly#1{\ifnum#1>0 \@allowscanonlytrue\else\@allowscanonlyfalse\fi}
+\def\allowframescanonly#1{\ifnumgreat{#1}{0}{\@allowscanonlytrue}{\@allowscanonlyfalse}}
 \@allowscanonlytrue
-\def\@ifallowscanonlystate{\if@allowscanonly1\else0\fi}
 
 
 
@@ -571,11 +568,11 @@
 }{\ignorespacesafterend}
 
 
-\newcounter{incrementalnext}
+\newcounter{next}
 
 % process the body of environment
 \long\def\@incremental#1{%
-  \setcounter{incrementalnext}{0}%
+  \setcounter{next}{0}%
   \@incremental@optspec#1\nextX% ungroup and terminate input
 }
 
@@ -589,40 +586,45 @@
 % #2: remaining fields including terminal \next
 \long\def\@incremental@firstfield#1\next#2X{%
   \@ifempty{#1}%
-    {\stepcounter{incrementalnext}\@incremental@nextfield@spec#2X}        % skip if nothing before first \next
-    {\@incremental@firstfield@spec#1\next#2X}%
+    {\stepcounter{next}\@incremental@next@chkstar#2X}        % skip if nothing before first \next
+    {\@incremental@next@spec@nocmd#1\next#2X}%
+}
+
+% check for starred \next => no command
+\def\@incremental@next@chkstar{%
+  \@ifstar{\@incremental@next@spec@nocmd}{\@incremental@next@spec}%
 }
 
 % check for overlay spec within the field
-\def\@incremental@firstfield@spec{%
+\def\@incremental@next@spec@nocmd{%
   \@ifnextchar<%input starts with overlay spec char
-    {\@incremental@do@firstfield}%
-    {\x@\@incremental@do@firstfield\beamer@defaultospec}%
+    {\@incremental@do@next@nocmd}%
+    {\x@\@incremental@do@next@nocmd\beamer@defaultospec}%
 }
 % #1: spec
 % #2: field contents
 % #3: remaining fields
-\long\def\@incremental@do@firstfield<#1>#2\next#3X{%
+\long\def\@incremental@do@next@nocmd<#1>#2\next#3X{%
     \action<#1>{#2}%
     \@ifempty{#3}%
       {}% done
-      {\stepcounter{incrementalnext}\@incremental@nextfield@spec#3X}%
+      {\stepcounter{next}\@incremental@next@chkstar#3X}%
 }
 
-% check for overlay spec within the field
-\def\@incremental@nextfield@spec{%
+
+\def\@incremental@next@spec{%
   \@ifnextchar<%input starts with overlay spec char
-    {\@incremental@do@nextfield}%
-    {\x@\@incremental@do@nextfield\beamer@defaultospec}%
+    {\@incremental@do@next}%
+    {\x@\@incremental@do@next\beamer@defaultospec}%
 }
 % #1: spec
 % #2: field contents
 % #3: remaining fields
-\long\def\@incremental@do@nextfield<#1>#2\next#3X{%
+\long\def\@incremental@do@next<#1>#2\next#3X{%
     \action<#1>{\incremental@do#2}%
     \@ifempty{#3}%
       {}% done
-      {\stepcounter{incrementalnext}\@incremental@nextfield@spec#3X}%
+      {\stepcounter{next}\@incremental@next@chkstar#3X}%
 }
 
 
@@ -638,7 +640,7 @@
 % Create an incremental version of the named environment.  The new
 % environment is accessible as either {incrementalname} or {name<>}.
 
-\newcommand\CreateIncrementalAlignEnvironment[1]{%
+\newcommand\CreateIncrementalAlignmentEnvironment[1]{%
   \@ifnextchar[{\@createincralign@opt{#1}}{\@createincralign@opt{#1}[0]}
 }
 \def\@createincralign@opt#1[#2]#3{%
@@ -704,15 +706,15 @@
 % read any environment arguments and default spec
 % #1 - environment name
 % #2 - number of optional args left
-% #3 - number of manditory args left
+% #3 - number of required args left
 \def\@incralign@readargs#1#2#3{%
   \ifnumgreater{#2}{0}% any remaining optional args?
     {% check for one, if missing then no more optional args
       \@ifnextchar[{\@incralign@readoptarg{#1}{#2}{#3}}{\@incralign@readargs{#1}{0}{#3}}%
     }{%
-        \ifnumgreater{#3}{0}% any remaining manditory args?
-         {% read it
-           \@incralign@readfixedarg{#1}{#2}{#3}%
+        \ifnumgreater{#3}{0}% any remaining required args?
+         {% read one
+           \@incralign@readreqarg{#1}{#2}{#3}%
          }{% read the default spec and process the body
            \@ifnextchar[%
              {\@incralign@process@line}%
@@ -722,14 +724,24 @@
 }
 
 \def\@incralign@readoptarg#1#2#3[#4]{%
-  \@incraligntoks=\x@{\the\@incraligntoks [#4]}%
-  \@incralign@readargs{#1}{\numexpr #2 - 1\relax}{#3}%
+  \iffirst<{#4}%
+    {\ifnumgreater{#3}{0}%
+      {\PackageError{beamincr}{Default spec appears before last reqd arg in #1<>}{}}%
+      {\@incralign@readargs{#1}{0}{0}[#4]}%
+    }{%
+      \@incraligntoks=\x@{\the\@incraligntoks [#4]}%
+      \@incralign@readargs{#1}{\numexpr #2 - 1\relax}{#3}%
+    }%
 }
-\def\@incralign@readfixedarg#1#2#3#4{%
-  \@incraligntoks=\x@{\the\@incraligntoks {#4}}%
-  \@incralign@readargs{#1}{#2}{\numexpr #3 - 1\relax}%
+\def\@incralign@readreqarg#1#2#3#4{%
+  \iffirst[{#4}% looks like an opt arg
+    {\PackageError{beamincr}{Too many optionals or default spec appears before last reqd arg in #1<>}{}}%
+    {\@incraligntoks=\x@{\the\@incraligntoks {#4}}%
+      \@incralign@readargs{#1}{#2}{\numexpr #3 - 1\relax}}%
 }
 
+\def\iffirst#1#2{\@ifffirst#1#2X}
+\def\@ifffirst#1#2#3X{\if#1#2\x@\@firstoftwo\else\x@\@secondoftwo\fi}
 
 %% main processing loop
 
@@ -819,12 +831,12 @@
 %% create a few aligned environments by default
 %%
 
-\CreateIncrementalAlignEnvironment{align*}{0}[<+->&<.->&<.->&<.->&<.->&<.->&<.->&<.->]
-\CreateIncrementalAlignEnvironment{align}{0}[<+->&<.->&<.->&<.->&<.->&<.->&<.->&<.->]
-\CreateIncrementalAlignEnvironment{gather}{0}[<+->]
-\CreateIncrementalAlignEnvironment{gather*}{0}[<+->]
-\CreateIncrementalAlignEnvironment{tabular}[1]{1}[<+->&<.->&<.->&<.->&<.->&<.->&<.->&<.->]
-\CreateIncrementalAlignEnvironment{tabular*}[1]{2}[<+->&<.->&<.->&<.->&<.->&<.->&<.->&<.->]
+\CreateIncrementalAlignmentEnvironment{align*}{0}[<+->&<.->&<.->&<.->&<.->&<.->&<.->&<.->]
+\CreateIncrementalAlignmentEnvironment{align}{0}[<+->&<.->&<.->&<.->&<.->&<.->&<.->&<.->]
+\CreateIncrementalAlignmentEnvironment{gather}{0}[<+->]
+\CreateIncrementalAlignmentEnvironment{gather*}{0}[<+->]
+\CreateIncrementalAlignmentEnvironment{tabular}[1]{1}[<+->&<.->&<.->&<.->&<.->&<.->&<.->&<.->]
+\CreateIncrementalAlignmentEnvironment{tabular*}[1]{2}[<+->&<.->&<.->&<.->&<.->&<.->&<.->&<.->]
 
 
 \catcode`X=11
