@@ -17,6 +17,11 @@
   \@ifempty{#1}{\@ifempty{#2}{#3}{\@ifwhitespace#2X{#3}{#4}}}{#4}%
 }
 
+% compare #1 to first token of #2, if equal -> #3 else ->#4
+\long\def\iffirst#1#2#3#4{\@ifempty{#2}{#4}{\@iffirst#1#2X{#3}{#4}}}
+\long\def\@iffirst#1#2#3X#4#5{\if#1#2\x@\@firstoftwo\else\x@\@secondoftwo\fi{#4}{#5}}
+
+
 % choose the first line to get debugging messages on screen and log
 \def\beamincrdebug#1{%
   \ifnumgreater{#1}{0}%
@@ -581,6 +586,9 @@
   \x@\def\x@\incremental@do#1{#2}\Collect@Body\@incremental%
 }{\ignorespacesafterend}
 
+\newenvironment{incrementaldolongdef}[2][]{%
+  \x@\long\x@\def\x@\incremental@do#1{#2}\Collect@Body\@incremental%
+}{\ignorespacesafterend}
 
 \newcounter{next}
 
@@ -755,9 +763,6 @@
       \@incralign@readargs{#1}{#2}{\numexpr #3 - 1\relax}}%
 }
 
-\def\iffirst#1#2{\@ifffirst#1#2X}
-\def\@ifffirst#1#2#3X{\if#1#2\x@\@firstoftwo\else\x@\@secondoftwo\fi}
-
 %% main processing loop
 
 % process line-by-line
@@ -853,6 +858,41 @@
 \CreateIncrementalAlignmentEnvironment{tabular}[1]{1}[<+->&<.->&<.->&<.->&<.->&<.->&<.->&<.->]
 \CreateIncrementalAlignmentEnvironment{tabular*}[1]{2}[<+->&<.->&<.->&<.->&<.->&<.->&<.->&<.->]
 
+
+%%
+
+\@ifpackageloaded{tikz}{
+
+\newenvironment{incrementallayers}[1][]{%
+  % if the optional arg contains an overlay spec, 
+  \iffirst<{#1}{\def\beamer@defaultospec{#1}}{\tikzset{incremental layer/.append style={#1}}}
+  \x@\long\x@\def\x@\incremental@do##1\@endnext{\node[#1]{{##1}};}
+     \Collect@Body\@incrementallayers%
+}{\ignorespacesafterend}
+
+\tikzset{incremental layer/.style={}}
+
+\newcommand\@incrementallayers[1]{%
+  \begin{tikzpicture}[%
+      t/.style={anchor=north},
+      c/.style={anchor=center},
+      b/.style={anchor=south},
+      every node/.style={text width=\columnwidth,inner sep=0pt,t,incremental layer}]
+    \@incremental{#1}
+  \end{tikzpicture}
+}
+
+\long\def\@incremental@layer@cmd#1{%
+  \iffirst[{#1}{\@incremental@layer@cmd@opt#1X}{\@incremental@layer@cmd@opt[]#1X}
+}
+\long\def\@incremental@layer@cmd@opt[#1]#2X{%
+  \node[#1]{#2}; 
+  % global options installed by every node style;  
+}
+
+
+
+} %% end tikz-dependent extensions
 
 \catcode`X=11
 
