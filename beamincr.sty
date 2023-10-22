@@ -124,8 +124,17 @@
 \def\incrlabel@angle<#1>#2{%
   \incrlabel@do{\beamer@againname}{#2}{\parseincrspec{#1}}%
 }
-\newcommand\incrlabel@do[3]{%
-  \x@\x@\x@\xdef\x@\csname beamincr@#1@#2\endcsname{#3}%
+\def\incrlabel@do#1#2#3{%
+  %   \x@\x@\x@\xdef\x@\csname beamincr@#1@#2\endcsname{#3}%
+  \iffirst({#2}{%
+    \incrlabel@do@{#1}#2X{#3}%
+  }{%
+    \incrlabel@do@{#1}(0)#2X{#3}%
+  }%
+}
+
+\def\incrlabel@do@#1(#2)#3X#4{%
+  \x@\x@\x@\xdef\x@\csname beamincr@#1@#3\endcsname{\the\numexpr #2+#4\relax}%
 }
 
 %% \incrlabel@action is called using a |= action
