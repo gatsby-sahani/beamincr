@@ -922,7 +922,7 @@
 \tikzoption{bounding xy b}{\tikzset{shift=(#1.south west), x=(#1.south east), y=(#1.north west)}}
 
 \newenvironment{boundinglayerscope}[1][]
-  {\node (bounding layer) [fit layers,inner sep=0pt,draw]{};
+  {\node (bounding layer) [fit layers,inner sep=0pt]{};
     % insert #1 twice: first allow layer alignment to be overridden, then to allow the xy coordinates
     % to be changed
     \begin{scope}[#1, bounding xy \@incrementallayer@alignment=bounding layer, #1]}
