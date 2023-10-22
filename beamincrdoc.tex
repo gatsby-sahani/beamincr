@@ -25,10 +25,12 @@
 \usepackage[left=2.25cm,right=2.25cm,top=2.5cm,bottom=2.5cm,nohead]{geometry}
 \usepackage{translator}
 \usepackage{tikz}
+\def\TikZ{Ti\textit{k}Z}
 
 %% beamer userguide macros
 \input{beamerug-macros}
 
+% adapt the environment doc macro to provide environment contents
 \makeatletter
 \def\envwithcontents#1#2{\list{}{\leftmargin=2em\itemindent-\leftmargin\def\makelabel##1{\hss##1}}%
   \extractflexenvironement#1@{#2}\par\topsep=0pt}
@@ -41,7 +43,6 @@
   }%
   \index{#1@\protect\texttt{#1} environment}%
   \index{Environments!#1@\protect\texttt{#1}}}
-
 \makeatother
 
 
@@ -314,6 +315,11 @@ redisplay certain slides in the frame with |\afterframe| or |\handoutframe|
   number or an increment specification.  This allows forms like
   |\incrlabel</.(2)/>{x}| to set |x| to the current increment + 2.  See the
   discussion of increment specifications below.
+
+  If \marg{label} starts with a number in parentheses (e.g. |(2)x|) then this
+  number is added to the current increment, or to the value of \meta{incr},
+  to obtain the label value.  Thus, the effect of the command above can also be
+  achieved by  |\incrlabel{(2)x}|.  
 \end{command}
 
 \begin{command}{\incrref \marg{incr spec}}
@@ -449,12 +455,15 @@ with |\incrlabel| in place.  Thus in this code \example
   \action<!/.(3)/>{\incrlabel</.(-1)/>{x}action text}
   \resetincr[3]
   \action<!/.(3)/|=(-1)>{/x/action text}
+  \resetincr[3]
+  \action<!/.(3)/|=>{/(-1)x/action text}
 \end{verbatim}
-the first two action calls set the label \texttt{x} to 5.  The latter two
+the first two action calls set the label \texttt{x} to 5.  The last three
 illustrate the use of assignment offsets: if \texttt{=} is followed by a number
 in parentheses, this is treated as an offset to add to the current increment at
 assignment, in the same way as indicated by the optional |<|\meta{incr}|>|
-argument to |\incrlabel|.
+argument to |\incrlabel|.  The same effect can be achieved by placing the offset
+before the label name. 
 
 If no |/label/| is found or if the name is empty, the action tries to do nothing
 quietly.  This makes it possible to use an |=| in a default spec, but only
@@ -736,10 +745,10 @@ increment specifications within alignment environments such as |tabular| or
 \end{environment}
 
 
-\subsection{TikZ-based incremental environments}
+\subsection{\TikZ-based incremental environments}
 
-The following environments use TikZ picture commands to create their effects.
-They will only be defined if TikZ is loaded before |beamincr|.
+The following environments use \TikZ\ picture commands to create their effects.
+They will only be defined if \TikZ\ is also loaded in the document preamble.
 
 \begin{envwithcontents}{{incrementallayers}
     \oarg{node options}\opt{\texttt{[<}\meta{default specification}\texttt{>]}}}
@@ -751,7 +760,7 @@ They will only be defined if TikZ is loaded before |beamincr|.
     \item \hskip2em $\vdots$
   }
 
-  Set \meta{next contents} within overlayed TikZ nodes.  This may have the
+  Set \meta{next contents} within overlayed \TikZ\ nodes.  This may have the
   effect of later text appearing to be layered on top of earlier material.  If
   the specifications place material on mutually exclusive increments (e.g. with
   |<+>|) then this has a similar effect to \beamer's |overprint| environment.  In
@@ -763,8 +772,8 @@ They will only be defined if TikZ is loaded before |beamincr|.
   By default, nodes are set with |text width = \columnwidth, inner sep=0pt| so
   that the text fills the width of the current frame or column or minipage.
   They are aligned at their top borders.  These defaults can be overridden, and
-  arbitrary TikZ options provided to the nodes, in one of three ways: by setting
-  options in the |incremental layer| TikZ style, by placing them in the optional
+  arbitrary \TikZ\ options provided to the nodes, in one of three ways: by setting
+  options in the |incremental layer| \TikZ\ style, by placing them in the optional
   \meta{node options} argument to the environment, or by placing them in the
   optional \meta{next node options} after a |\next| (and after any \meta{next
     specification}).
@@ -775,18 +784,18 @@ They will only be defined if TikZ is loaded before |beamincr|.
 
   The entire environment is set within a single |tikzpicture|.  Any
   \meta{pre-next contents} and the contents of any |\next*| are passed directly
-  to TikZ.  The default origin of the coordinate system is the |north|, |center|
+  to \TikZ.  The default origin of the coordinate system is the |north|, |center|
   or |south| anchor points of the layer nodes for |t|, |c| and |b| alignment
   respectively.  The nodes themselves are accessible under the names
   \texttt{(layer \meta{n})}, where \meta{n} is the corresponding value of the
   |next| counter.
   %
-  The tikz option |fit layers| can be given to a node to surround all the layers
-  defined so far in the |incrementallayers| environment (see the tikz fit
+  The \TikZ\ option |fit layers| can be given to a node to surround all the layers
+  defined so far in the |incrementallayers| environment (see the \TikZ\ fit
   library).
 
   There is also a new environment called |boundinglayerscope| which creates a
-  TikZ |scope| with the following additions.  A node called |(bounding layer)|
+  \TikZ\ |scope| with the following additions.  A node called |(bounding layer)|
   is created to (tightly) fit the layers defined so far, and the |xy| coordinate
   system in the scope is redefined according to the alignment of the most recent
   layer, or a |tcb| alignment option to \texttt{boundinglayerscope}.  The origin
@@ -936,18 +945,19 @@ The following four environments are equivalent, apart from equation numbering:
 The incremental forms |incrementalgather|, |gather<>|, |incrementalgather*| and
 |gather*<>| are also created when |beamincr| is loaded.  Although these contain
 only one field per line, automatic access to \beamer\ and |beamincr| actions as
-these lines are processed can be useful.
+these lines are processed can be useful.  By default, they uncover equations a
+line at a time (using |<+->|).
 
 \begin{environment}{{incrementaltabular}\oarg{pos}\marg{cols}\opt{\texttt{[<}\meta{spec1}\texttt{>\&<}\meta{spec2}\texttt{>\& ...]}}}
 \end{environment}
 \begin{environment}{{tabular<>}\oarg{pos}\marg{cols}\opt{\texttt{[<}\meta{spec1}\texttt{>\&<}\meta{spec2}\texttt{>\& ...]}}}
   These provide increment-aware versions of the standard \LaTeX\ |tabular|
-  environment.  By default  fields ae uncovered one-by-one rather than a line at
-  a time, but this behaviour can be altered by changing the default
-  specification when called or by using |\setincrementalenvspec| as described
-  below.  It may also be desirable to uncover entries column-by-column.  This
-  effect can be achieved with increment labels.
-\example
+  environment.  By default, the entire table is uncovered on the current
+  increment (using |<.->|), but this behaviour can be altered by changing the
+  default specification when called, or by using |\setincrementalenvspec| as
+  described below.  It may also be desirable to uncover entries
+  column-by-column.  This effect can be achieved using increment labels.
+  \example
 \begin{verbatim}
 \begin{tabular<>}{cccc}[</col1-/>&</col2-/>&</col3-/>&</col4-/>]
   <=(1)>/col1/\bf fruit & <=(2)>/col2/\bf colour  
