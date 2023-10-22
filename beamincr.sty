@@ -568,9 +568,19 @@
 %% incremental[do] environments
 %%
 
+% define env<> as a synonym for incrementalenv
+\newcommand\@incremental@env@angles[1]{
+  \csletcs{#1<>}{incremental#1}%
+  \csletcs{end#1<>}{endincremental#1}%
+}
+
+
+%% user-facing incremental[do] environments
+
 \newenvironment{incremental}{%
   \let\incremental@do\relax\Collect@Body\@incremental%
 }{\ignorespacesafterend}
+\@incremental@env@angles{}
 
 \let\@endnext\relax
 \newenvironment{incrementaldo}[1]{%
@@ -581,14 +591,17 @@
 \newenvironment{incrementaldocmd}[2][0]{%
   \x@\newcommand\x@\incremental@do\@firstofone{[#1]{#2}}\Collect@Body\@incremental%
 }{\ignorespacesafterend}
+\@incremental@env@angles{docmd}
 
 \newenvironment{incrementaldodef}[2][]{%
   \x@\def\x@\incremental@do#1{#2}\Collect@Body\@incremental%
 }{\ignorespacesafterend}
+\@incremental@env@angles{dodef}
 
 \newenvironment{incrementaldolongdef}[2][]{%
   \x@\long\x@\def\x@\incremental@do#1{#2}\Collect@Body\@incremental%
 }{\ignorespacesafterend}
+\@incremental@env@angles{dolongdef}
 
 \newcounter{next}
 
@@ -710,8 +723,9 @@
   \newenvironment{incremental#1}{%
     \def\@incralign@this####1{\@incralign[#1]{####1}}%
     \collect@body\@incralign@this}{}%
-  \csletcs{#1<>}{incremental#1}%
-  \csletcs{end#1<>}{endincremental#1}%
+  \@incremental@env@angles{#1}%
+  % \csletcs{#1<>}{incremental#1}%
+  % \csletcs{end#1<>}{endincremental#1}%
 }
 
 \def\@incralign[#1]#2{%
@@ -869,6 +883,7 @@
   \x@\long\x@\def\x@\incremental@do##1\@endnext{\node[#1]{{##1}};}
      \Collect@Body\@incrementallayers%
 }{\ignorespacesafterend}
+\@incremental@env@angles{layers}
 
 \tikzset{incremental layer/.style={}}
 
