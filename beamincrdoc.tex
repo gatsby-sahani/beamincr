@@ -773,12 +773,66 @@ They will only be defined if TikZ is loaded before |beamincr|.
   their top edges (the default); |b| at their bottom edges and |c| at their
   centres.
 
-  The entire environment is set within a single |tikzpicture|.  Thus any
-  \meta{pre-next contents} or the contents of |\next*| fields will be intepreted
-  as TikZ commands.  The default origin of the coordinate system is the |north|,
-  |center| or |south| anchor points of the layer nodes for |t|, |c| and |b|
-  alignment respectively.  The nodes themselves are accessible under the names
-  |(layer n)|, where |n| is the corresponding value of the |next| counter.
+  The entire environment is set within a single |tikzpicture|.  Any
+  \meta{pre-next contents} and the contents of any |\next*| are passed directly
+  to TikZ.  The default origin of the coordinate system is the |north|, |center|
+  or |south| anchor points of the layer nodes for |t|, |c| and |b| alignment
+  respectively.  The nodes themselves are accessible under the names
+  \texttt{(layer \meta{n})}, where \meta{n} is the corresponding value of the
+  |next| counter.
+  %
+  The tikz option |fit layers| can be given to a node to surround all the layers
+  defined so far in the |incrementallayers| environment (see the tikz fit
+  library).
+
+  There is also a new environment called |boundinglayerscope| which creates a
+  TikZ |scope| with the following additions.  A node called |(bounding layer)|
+  is created to (tightly) fit the layers defined so far, and the |xy| coordinate
+  system in the scope is redefined according to the alignment of the most recent
+  layer, or a |tcb| alignment option to \texttt{boundinglayerscope}.  The origin
+  is placed at the |north west|, |center| or |south west| of the bounding node,
+  for |t|, |c|, or |b| alignment respectively.  The |x| vector extends
+  horizontally to the east border of the bounding node, while |y| extends
+  vertically to the opposite side (or top for |c| alignment).
+
+  \begin{center}
+  \begin{tikzpicture}[box/.style={draw, minimum width=6em, minimum height=6em},font={\tt\small}]
+    \node[box] (t) {bounding layer};
+    \node[below=2ex] at (t.south) {\texttt{t} alignment};
+    \begin{scope}[shift=(t.north west), x=(t.north east), y=(t.south west)]
+      \fill (0,0) circle (2pt);
+      \draw[thick,->] (0,0) -- (1,0) node [midway,above] {x};
+      \draw[thick,->] (0,0) -- (0,1) node [midway,left] {y};
+      \node at (0,0) [above left,inner sep=0pt] {(0,0)};
+      \node at (0,1) [below left,inner sep=0pt] {(0,1)};
+      \node at (1,0) [above right,inner sep=0pt] {(1,0)};
+    \end{scope}
+
+    \node[box, right=8em, text height=4em] at (t.east) (c) {bounding layer};
+    \node[below=2ex] at (c.south) {\texttt{c} alignment};
+    \begin{scope}[shift=(c), x=(c.east), y=(c.north)]
+      \fill (0,0) circle (2pt);
+      \draw[thick,->] (0,0) -- (1,0) node [midway,below] {x};
+      \draw[thick,->] (0,0) -- (0,1) node [midway,left] {y};
+      \node at (0,0) [below left,inner sep=0pt] {(0,0)};
+      \node at (0,1) [above left, inner sep=0pt] {(0,1)};
+      \node at (1,0) [below right,inner sep=0pt] {(1,0)};
+    \end{scope}
+
+
+    \node[box, right=8em] at (c.east) (b) {bounding layer};
+    \node[below=2ex] at (b.south) {\texttt{b} alignment};
+    \begin{scope}[shift=(b.south west), x=(b.south east), y=(b.north west)]
+      \fill (0,0) circle (2pt);
+      \draw[thick,->] (0,0) -- (1,0) node [midway,below] {x};
+      \draw[thick,->] (0,0) -- (0,1) node [midway,left] {y};
+      \node at (0,0) [below left,inner sep=0pt] {(0,0)};
+      \node at (0,1) [above left,inner sep=0pt] {(0,1)};
+      \node at (1,0) [below right,inner sep=0pt] {(1,0)};
+    \end{scope}
+  \end{tikzpicture}
+  \end{center}
+
   
 \end{envwithcontents}
 \begin{environment}{{layers<>}
