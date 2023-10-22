@@ -4,8 +4,18 @@
 \RequirePackage{etoolbox} % beamer uses this anyway
 \RequirePackage{environ} % for long Collect@Body
 
+% change category of X to other, so it can be used to separate arguments without interference from
+% Xs in the input.  this means we can't use X as a letter in this file.
+\catcode`X=12
+
 % abbreviate \expandafter
 \let\x@=\expandafter
+
+% if #1 is empty or whitespace (incl \par) -> #2 else -> #3
+\long\def\ifwhitespace#1#2#3{\@ifwhitespace#1\parX{#2}{#3}}
+\long\def\@ifwhitespace#1\par#2X#3#4{%
+  \@ifempty{#1}{\@ifempty{#2}{#3}{\@ifwhitespace#2X{#3}{#4}}}{#4}%
+}
 
 % choose the first line to get debugging messages on screen and log
 \def\beamincrdebug#1{%
@@ -27,9 +37,6 @@
 
 
 
-% change category of X to other, so it can be used to separate arguments without interference from
-% Xs in the input.  this means we can't use X as a letter in this file.
-\catcode`X=12
 
 
 %% 
@@ -586,7 +593,7 @@
 % #1: field to first \next
 % #2: remaining fields including terminal \next
 \long\def\@incremental@firstfield#1\next#2X{%
-  \@ifempty{#1}%
+  \ifwhitespace{#1}%
     {\stepcounter{next}\@incremental@next@chkstar#2X}        % skip if nothing before first \next
     {\@incremental@next@spec@nocmd#1\next#2X}%
 }
@@ -634,8 +641,7 @@
 %% create increment-aware alignment environments
 %%
 
-%% user-facing commands
-
+%% user-facing incremental align commands
 
 %% \CreateIncrementalAlignEnvironment{name}[Nopts]{Nargs}[defaultspec]
 % Create an incremental version of the named environment.  The new
