@@ -24,9 +24,26 @@
 \usepackage[pdfborder={0 0 0},bookmarksnumbered]{hyperref}
 \usepackage[left=2.25cm,right=2.25cm,top=2.5cm,bottom=2.5cm,nohead]{geometry}
 \usepackage{translator}
+\usepackage{tikz}
 
 %% beamer userguide macros
 \input{beamerug-macros}
+
+\makeatletter
+\def\envwithcontents#1#2{\list{}{\leftmargin=2em\itemindent-\leftmargin\def\makelabel##1{\hss##1}}%
+  \extractflexenvironement#1@{#2}\par\topsep=0pt}
+\def\endenvwithcontents{\endlist}
+\def\extractflexenvironement#1#2@#3{%
+\item{{\ttfamily\char`\\begin\char`\{\declare{#1}\char`\}}#2}%
+  {\itemsep=0pt\parskip=0pt%
+    {\itemindent=-1em #3}%
+    \item{\ttfamily\char`\\end\char`\{\declare{#1}\char`\}}%
+  }%
+  \index{#1@\protect\texttt{#1} environment}%
+  \index{Environments!#1@\protect\texttt{#1}}}
+
+\makeatother
+
 
 %% Maths
 \usepackage{amssymb,amsmath}
@@ -108,12 +125,10 @@ the \texttt{beamincr} package}
 \maketitle
 
 \noindent
-The \beamer\ class provides a number of powerful mechanisms to compose
-and control ``overlays'' or ``animations,'' where a single complex
-slide is built up (or changed) piece by piece.
-%
-While powerful, these mechanisms may sometimes be usefully extended.  This
-package provides some such enhancements.
+The |beamincr| package provides a set of extensions and enhancement to the
+incremental overlay mechanisms implemented in the \beamer\ class.  These
+include labels to refer to and manipulate overlay steps, an extended action
+syntax, and new increment-aware environments.
 
 \section{Background: overlays and increments}
 
@@ -203,11 +218,12 @@ are certainly possible in stock \beamer, but take some digging into internals.
 The tools here make things a bit easier.
 
 As an aside, \beamer\ has another incremental overlay system based on the
-|\pause| command.  The |\pause| command uses the same counter as increments, but
-inteprets it slightly differently. This difference is discussed in 
-\cref{sec:internals}. As a result, the two sets of specifications don't play very
-well together, at least from the viewpoint of non-experts.  More on this below.
-I strongly suggest avoiding \myprintcommand{pause} entirely.
+|\pause| command.  This uses the same counter as increments (in fact, the
+counter is called |beamerpauses|), but inteprets it slightly differently. This
+difference is discussed in \cref{sec:internals}. As a result, the two sets of
+specifications don't play very well together, at least from the viewpoint of
+non-experts.  More on this below.  I strongly suggest avoiding
+|\pause| entirely when using |beamincr|.
 
 
 \section{Setting increments}\label{sec:setting}
@@ -280,8 +296,8 @@ on \meta{incr} are the same as above.
 
 \section{Labelling and referring to increments}\label{sec:labels}
 
-In complicated frames, it may be useful to name certain increments for later
-reference.  For instance, one might want to change a figure at certain steps
+In complicated frames, it may be useful to name certain increments for reference
+elsewhere.  For instance, one might want to change a figure at certain steps
 while progressing through a list of bullet points.  Or one might want to
 redisplay certain slides in the frame with |\afterframe| or |\handoutframe|
 (described below).
@@ -291,7 +307,7 @@ redisplay certain slides in the frame with |\afterframe| or |\handoutframe|
   \meta{label}.  Once defined, the labelled increment can be recovered in
   (almost) any overlay spec using the constructs discussed below.  The
   \meta{label} can contain most characters, but should not start with any of the
-  characters |.!=|.
+  characters |.!=| or contain any of |()-~|.
 
   If the optional \meta{incr} is provided, \meta{label} is set to its value.
   The restrictions on \meta{incr} are the same as for |\resetincr|: it can be a
@@ -310,7 +326,8 @@ The general form of an increment specification is
 \begin{command}{{increment specification}: |label|\opt{|(offset)|}}
   The label can be a string assigned by a call to |\incrlabel|, or the special
   label `|.|' which refers to the current increment (this is subtly different to
-  the incremental overlay specification `|.|').  The \meta{offset}, if given, is
+  the incremental overlay specification `|.|').  A further special label `|!|'
+  is introduced in \cref{sec:labels:setting}.  The \meta{offset}, if given, is
   added to the increment indicated by the label.  It can be negative.
 
   Increment specifications can be used as part of almost any overlay
@@ -368,7 +385,7 @@ There is also a similar new command called |\handoutframe| to render more than
 one overlay from a frame in \texttt{handout} or similar modes that, by default,
 just show a single slide with all the overlays collapsed.  See \cref{sec:helper}.
 
-\subsection{Setting increments in overlay action specifications}
+\subsection{Setting increments in overlay action specifications} \label{sec:labels:setting}
 
 It is possible to use the \beamer\ syntax for actions in overlays to reset the
 increment number.  This can be done using the explicit |resetincr@|\meta{increment} action or
@@ -379,7 +396,8 @@ with an implicit |<!|\meta{increment}|>| specification.  \example
 \end{verbatim}
 The increment number can be replaced by a label, with optional offset:
 \begin{verbatim}
-  \resetincr[2]\incrlabel{x}\resetincr[1]
+  \incrlabel<2>{x}
+  \resetincr
   \action</x/->{body on 2+}
   \onslide<.->{this on 1+}
   \action<!/x(2)/->{body on 4+}
@@ -390,11 +408,10 @@ already advances the increment, while |<!.>| would set it to its current value).
 However |<!/.(|\meta{offset}|)/>| (note the |/| label notation) can be used to advance the
 increment counter by multiple (or negative) steps.
 
-The reset only takes effect after the overlay specification has been interpreted
-and before the body is set.  So any |+| or |.| references will be relative to
-the increment in effect \emph{before} the |\action|.  However, the special
-increment label |/!/| can be used to access the most recent reset.
-\example
+The reset takes effect after the overlay specification has been interpreted and
+before the body is set.  So any |+| or |.| references will be relative to the
+increment in effect \emph{before} the |\action|.  However, the special increment
+label |/!/| can be used to access the most recent reset.  \example
 \begin{verbatim}
   \resetincr
   \action<!/.(2)/-|alert@.>{alert too early}
@@ -402,21 +419,23 @@ increment label |/!/| can be used to access the most recent reset.
   \action<!/.(2)/-|alert@/!/>{alert when uncovered}
 \end{verbatim}
 It is possible to issue multiple |!| commands in one overlay spec but only the
-last of them will take effect.
+first of them will take effect.
 
 According to the user guide, \beamer\ actions are only supported by overlay
 specifications to |\action|, |\item|, the |actionenv| environment and block
-environments like |block| and |theorem|.  \texttt{beamincr} adds fields of
-incremental math alignment environments to this list (see \cref{sec:ams}).  In
-the absence of any action specifations, |\action| acts like |\uncover| (or
-|\onslide| with an argument).  Note that |\fromslide| (\cref{sec:setting}) can
-act like an |\onslide| declaration while setting the increment.
+environments like |block| and |theorem|.  This package adds the fields of
+incremental (\cref{sec:envs}) and incremental alignment environments
+(\cref{sec:align}) to this list.  In the absence of any action specifications,
+|\action| acts like |\uncover| (or |\onslide| with an argument).  Note that
+|\fromslide| (\cref{sec:setting}) can act like an |\onslide| declaration while
+also setting the increment.
 
 \subsection{Assigning labels from overlay action specifications}
 
-The \verb^<...|=^\opt{\texttt{(}\meta{offset}\texttt{)}}\verb^| ...>^ syntax can be used to assign
-a label using an action specification.  The name of the label to be assigned be
-enclosed in \texttt{//}s within the \emph{argument} of the |\action| (or |\item|
+The \verb^<...|=^\opt{\texttt{(}\meta{offset}\texttt{)}}\verb^| ...>^ syntax can
+be used to assign a label using an action specification.  The name of the label
+to be assigned must be enclosed in \texttt{//}s within the \emph{argument} of
+the |\action| (or |\item| or |\next| or alignment field
 \dots)\footnote{\beamer\ actions don't make it possible to pass a text argument
   to the handler.}  The label is assigned to the increment number after any
 \texttt{+} or \texttt{!} actions have been interpreted, as though it was called
@@ -442,18 +461,18 @@ quietly.  This makes it possible to use an |=| in a default spec, but only
 assign a label to some of the steps.  However, this behaviour comes with
 warnings, and should be used with caution.  First, because of the way \beamer's
 internals work, it is not currently possible to omit the |//| in an |\item|,
-although the label can be empty (omission is fine in an |incralign|
-environment).  Second, if there happens to be one more or more |/| characters in
-the argument to the action, the text between them (or from a single |/| to the
-end) will be interpreted as a label, unless an explicit |//| pair appears first.
-You have been warned!
+although the label can be empty (omission is fine in the fields of an
+incremental or incremental alignment environment).  Second, if there happens to
+be one more or more |/| characters in the argument to the action, the text
+between them (or from a single |/| to the end) will be interpreted as a label,
+unless an explicit |//| pair appears first.  You have been warned!
 
 \subsection{Extending default overlay or action specifications}
 
 By default, explicit overlay or action specifications override any defaults that
 might apply.  It may sometimes be convenient to instead extend the default.  The
 |~| spec can be used to add the current default spec fields into an explicit
-overlay spec.
+overlay specification.
 \example
 \begin{verbatim}
   \begin{itemize}[<+-| alert@+|=>]
@@ -463,48 +482,364 @@ overlay spec.
   \item<!/pe/-|~> yellow \item<!/or/-|~> orange \item<!/ap/-|~>green \item<!/pl/-|~> purple
   \end{itemize}
 \end{verbatim}
-Within |align| and similar environments (\cref{sec:ams}), a |~| will incorporate
-the field-specific default.
+Within incremental alignment environments (\cref{sec:align}), a |~| will
+incorporate the field-specific default.
 
 
+\subsection{Advanced references: using labels defined later} \label{sec:labels:advanced}
 
-\section{\AmSTeX\ align environments}\label{sec:ams}
+\begin{command}{\allowundefinedincrlabels\oarg{flag}}
+  If called alone, or with option \meta{\opt{flag}} > 0, tells \LaTeX\ not to
+  generate an error when encountering an undefined increment label.  References
+  to such labels instead evaluate to 0, and any offset in the reference is
+  ignored.  If \meta{\opt{flag}}=0, the default error-generating behaviour is
+  restored.
+\end{command}
+If a referenced label is defined later in the same frame, then it will take on
+that later-defined value on subsequent slides of the frame.  Thus, in effect,
+this option makes it possible to refer to increment labels before they are
+defined.  (Although material intended to be set on slide 1 cannot depend on such
+advance references.)
 
-The \texttt{align} and \texttt{align*} environments from the \texttt{amsmath}
-package are useful for multiple or multiline equations, but don't really work
-well with overlays.  The current package introduces a partial fix for this,
-although their are remaining fragilities that need to be worked around.  It
-should be straightforward to extend the approach used here to other
-\texttt{amsmath} equation environments if desired.
-
-\begin{environment}{{incralign[*]}\opt{\texttt{[<}\meta{spec1}\texttt{>\&<}\meta{spec2}\texttt{>\& ...]}}}
-    Pre-process the input to |align[*]| to place an |\action<>{}| command around
-    each field, defined as the material appearing between successive |&| and/or
-    |\\| tokens.  By default, the first field on a line is called with
-    |\action<+->{}|, and remaining ones with |\action<.->{}|.  This has the
-    effect of displaying a full line at a time.  The optional argument makes it
-    possible to change this to |\action<|\opt{\meta{spec1}}|>|,
-    |\action<|\opt{\meta{spec2}}|>|, etc.\ with the sequence of specifications
-    reset to |<|\opt{\meta{spec1}}|>| at the beginning of every line. If there are fewer
-    specifications in the default than fields on a single line, the
-    specification is repeated.  The default specification values can be changed
-    by a calling |\incraligndefaultspec| as below.
-
-    It is possible to override the default for a single field by starting it
-    with the new specification.  This means that a leading |<| in the field
-    content itself must be protected, e.g.\ by proceeding it with |{}|.
-
-    The use of |\action| means that beamer will interpret both standard
-    |action@|\meta{increment} actions and implicit (|!| prefixed) increment
-    resets.
-
-    \example
+If the label is used as part of an open range then it may be necessary to use a
+special syntax in which the range indicator is placed \emph{within} the |//|
+enclosing the label.  If the label is undefined (and so 0), this syntax sets the
+other limit of the range to 0 as well.
+\example
 \begin{verbatim}
-  \begin{incralign*}[<+->&<.->] % increment after every two &s
+  % /foo/ is not defined on first evaluation
+  \onslide</foo/->{spec expands to <0->, so text appears on all slides}
+  \onslide</foo-/>{spec expands to <0-0>, so text is suppressed}
+  \incrlabel<2>{foo} % on later evaluations, both specs will expand to <2->
+\end{verbatim}
+If the range is closed with an explicit numerical or (defined) label upper
+limit, then there is no current way to suppress early expansion.  However forms
+like |/foo/-/foo(2)/| will evaluate to |0-0| as offsets are ignored for
+undefined labels.
+
+Many problems with advanced references (including range expansion and the
+rendering of first-slide material) can be resolved by use of |\framescanonly|
+and |\againframe| (\cref{sec:helper}).
+
+An |\allowundefinedincrlabels| command also makes it possible to \emph{set} the
+current increment to an (initially) undefined label value using |\resetincr|,
+|\fromincr| or |<!/label/>|, thereby setting the current increment to 0.  Text
+set on that increment will not appear until the label is defined.  However, any
+subsequent |<+>| specs will still advance the increment number, which may not be
+desired.  This behaviour can be avoided by using the form |<!/.(1)/>| instead of
+|<+>|.  The current increment label |/./| is treated in the same way as an
+undefined one when the increment is 0, and so the offset is ignored.
+\example
+\begin{verbatim}
+\resetincr{/foo/} % no list items appear until /foo/ is defined
+\begin{itemize}<!/.(1)-/|alert@/!/>
+\item foo
+\item bar
+...
+\end{itemize}
+\end{verbatim}
+If an initially undefined label is used to set the increment counter early in
+the frame, then increment labels that are defined later in the frame may change
+value once that first label is defined.  This can be used for powerful effects,
+in which overlays in two different sections of the frame each depend on
+increments from the other.  However, if the definition label used in the early
+reference is itself altered by the change in that early evaluation, then there
+is a risk of creating an infinite loop.
+\example
+\begin{verbatim}
+  \begin{itemize}[<alert@/!/>]
+  \item<!/./-     |~|=(1)>/ping/ Apple  % 1- (!/./ ensures alert occurs on same slide)
+  \item<!/pong-/  |~> Peach             % 4-
+  \item<!/.(1)-/  |~|=>/ping2/ Plum     % 5-
+  \item<!/pong2-/ |~> Orange            % 8-
+  \end{itemize}
+  
+  \begin{itemize}[<alert@/!/>]
+  \item<!/ping-/  |~> green             % 2-
+  \item<!/.(1)-/  |~|=(1)>/pong/ yellow % 3-
+  \item<!/ping2-/ |~> purple            % 6-
+  \item<!/.(1)-/  |~|=(1)>/pong2/orange % 7-
+  \end{itemize}
+\end{verbatim}
+
+
+
+\section{Incremental environments}\label{sec:envs}
+
+The |beamincr| package provides a set of new increment-aware environments.
+These are described in the present section.  It also makes it possible to use
+increment specifications within alignment environments such as |tabular| or
+\AmSTeX\ |align|; these are discussed in \cref{sec:align}
+
+\begin{envwithcontents}{{incremental}
+    \opt{\texttt{[<}\meta{default specification}\texttt{>]}}}
+  {\item \hskip1em \sarg{pre-next specification} \opt{\meta{pre-next contents}}
+    \item \texttt{\string\next}\sarg{next specification}
+    \item \hskip1em \meta{next contents}
+    \item \texttt{\string\next}\sarg{next specification}
+    \item \hskip1em \meta{next contents}
+    \item \hskip2em $\vdots$
+  }
+  This environment can be thought of as an increment-aware |itemize| without the
+  list formatting.  This makes it suitable for incremental control of a wider
+  range of types of code, such as tikz drawing commands.
+%
+  The keyword |\next| within the environment acts like |\item| in terms of
+  incremental processing: the \meta{next contents} are set within an |\action|
+  command.  Each |\next| call can be followed by an optional \sarg{next
+    specification}, which is applied to the \meta{next contents}.  If the
+  specification is omitted, then the environment \opt{\meta{default
+      specification}} is applied.  If no \meta{default specification} was given
+  in the environment, then the default is inherited from the frame or container
+  default.  This is ordinarily |<*>|.
+
+  Unlike in |itemize| environments, code can also appear before the first
+  |\next|.  If any does, it is treated just like \meta{next contents}: it is
+  executed with the action specification given by \sarg{pre-next specification}
+  if present, or else the default specification.  On the other hand, if nothing
+  but whitespace appears between the opening of the environment---or the
+  optional default overlay spec---and the first |\next|) then no action is
+  applied.  In particular, this avoids side effects from, e.g., |<+>|
+  specifications in the default.  (This does not apply to later empty \meta{next
+    contents}.)
+
+  A counter called |next|, is set to 0 in the pre-next field and then advanced
+  at every |\next|.
+\example
+\begin{verbatim}
+\resetincr
+\begin{incremental}[<+->]
+  <.-> this text on slide 1;
+\next
+  on slide 2;
+\next<!/.(2)/->
+  on slide 4, but after only \theincrementalnext\ next commands.
+\end{incremental}
+\end{verbatim}
+\end{envwithcontents}
+\begin{environment}{{<>}\opt{\texttt{[<}\meta{default specification}\texttt{>]}}}
+  This is a synonym for |\begin{incremental} ... \end{incremental}|.
+\end{environment}
+
+
+\begin{envwithcontents}{{incrementaldo}
+    \marg{command definition}\opt{\texttt{[<}\meta{default specification}\texttt{>]}}}
+  {\item \hskip1em \sarg{pre-next specification} \opt{\meta{pre-next contents}}
+    \item \texttt{\string\next}\sarg{next specification}
+    \item \hskip1em \meta{next contents}
+    \item \texttt{\string\next}\sarg{next specification}
+    \item \hskip1em \meta{next contents}
+    \item \hskip2em $\vdots$
+  }
+
+  This version treats each \meta{next contents} as the argument to a command.
+  The command takes a single argument and is defined by \meta{command
+    definition} in the same way as in |\newcommand|.  As the command evaluation
+  happens deep within the bowels of \beamer\ processing, the single argument
+  generally needs to be accessed as |####1|, \emph{unless} the enclosing frame
+  is declared to be |fragile| (in the frame options), in which case it is just
+  |#1|.
+
+  The do command can be avoided for specific fields by using |\next*| in place
+  of |\next|.  Contents following |\next*| are set in the same way as in a plain
+  |incremental| environment.
+
+  Any non-empty \meta{pre-next contents} is always processed without the do
+  command.
+  
+\end{envwithcontents}
+\begin{environment}{{do<>}\marg{command definition}\opt{\texttt{[<}\meta{default specification}\texttt{>]}}}
+  This is a synonym for |\begin{incrementaldo} ... \end{incrementaldo}|.
+\end{environment}
+
+
+\begin{envwithcontents}{{incrementaldocmd}
+    \oarg{num args}\marg{code}\opt{\texttt{[<}\meta{default specification}\texttt{>]}}}
+  {\item \hskip1em \sarg{pre-next specification} \opt{\meta{pre-next contents}}
+    \item \texttt{\string\next}\sarg{next specification}
+    \item \hskip1em \meta{next contents}
+    \item \texttt{\string\next}\sarg{next specification}
+    \item \hskip1em \meta{next contents}
+    \item \hskip2em $\vdots$
+  }
+
+   This version inserts \meta{code} (comprising arbitrary \LaTeX\ commands)
+   after each |\next| and before \meta{next contents}.  If \meta{code} is (or
+   ends with) a command that takes one or more arguments, these will be read
+   from \meta{next contents}.  Braces may be needed within that text to
+   delineate the arguments.
+
+   If the optional \opt{\meta{num args}} is non-zero, then this number of
+   arguments is read from the text following |\next| and can be accessed using
+   argument parameters (almost) as in |\newcommand|.  As the command evaluation
+   happens deep within the bowels of \beamer\ processing, the parameter numbers
+   must be protected with four |####| symbols, \emph{unless} the frame is
+   declared to be |fragile| (in the frame options) in which case a single |#|
+   works.
+
+  The \meta{code} can be avoided for specific fields by using |\next*| in place
+  of |\next|.  Contents following |\next*| are set in the same way as in a plain
+  |incremental| environment.
+
+  Any non-empty \meta{pre-next contents} is always processed without \meta{code}.
+
+  \example
+\begin{verbatim}
+\tikz[every node/.style={above,allow upside down,midway,sloped}]{
+  \begin{incrementaldocmd}[1]{\draw ({72*\thenext-72}:10ex)--(72*\thenext:10ex) node {#1};}
+                          [<+-|alert@+|=>]
+    \next/one/   {one}
+    \next/two/   {two}
+    \next/three/ {three (\thenext/\theincrement)}
+    \next/four/  {four}
+    \next/five/  {five}
+    \next*/done/ \draw (0:5ex) \foreach \t in {1,...,5}{ -- (\t*72:5ex)};
+                 \node [anchor=center] {done!};
+  \end{incrementaldocmd}}
+\end{verbatim}
+\end{envwithcontents}
+\begin{environment}{{docmd<>}
+    \oarg{num args}\marg{code}\opt{\texttt{[<}\meta{default specification}\texttt{>]}}}
+  This is a synonym for |\begin{incrementaldocmd} ... \end{incrementaldocmd}|.
+\end{environment}
+
+
+\begin{envwithcontents}{{incrementaldodef}
+    \oarg{parameter spec}\marg{code}\opt{\texttt{[<}\meta{default specification}\texttt{>]}}}
+  {\item \hskip1em \sarg{pre-next specification} \opt{\meta{pre-next contents}}
+    \item \texttt{\string\next}\sarg{next specification}
+    \item \hskip1em \meta{next contents}
+    \item \texttt{\string\next}\sarg{next specification}
+    \item \hskip1em \meta{next contents}
+    \item \hskip2em $\vdots$
+  }
+  This is similar to the |incrementaldocmd| environment, but allows 
+  arguments to be specified using the flexible format of |\def|.  Parameter
+  numbers must be escaped with four |#|s in both specification and code, unless
+  the frame is declared |fragile|.  Code execution can be skipped using |\next*|
+  and is always skipped for any \meta{pre-next contents}.
+\end{envwithcontents}
+\begin{environment}{{dodef<>}
+    \oarg{parameter spec}\marg{code}\opt{\texttt{[<}\meta{default specification}\texttt{>]}}}
+  This is a synonym for |\begin{incrementaldodef} ... \end{incrementaldodef}|.
+\end{environment}
+
+\begin{environment}{{incrementaldolongdef}
+    \oarg{parameter spec}\marg{code}\opt{\texttt{[<}\meta{default specification}\texttt{>]}}}
+
+  This form allows paragraph breaks within the arguments, but is otherwise the
+  same as |\begin{incrementaldodef} ... \end{incrementaldodef}|,
+\end{environment}
+\begin{environment}{{dolongdef<>}
+    \oarg{parameter spec}\marg{code}\opt{\texttt{[<}\meta{default specification}\texttt{>]}}}
+  This is a synonym for |\begin{incrementaldolongdef} ... \end{incrementaldolongdef}|.
+\end{environment}
+
+
+\subsection{TikZ-based incremental environments}
+
+The following environments use TikZ picture commands to create their effects.
+They will only be defined if TikZ is loaded before |beamincr|.
+
+\begin{envwithcontents}{{incrementallayers}
+    \oarg{node options}\opt{\texttt{[<}\meta{default specification}\texttt{>]}}}
+  {\item \hskip1em \sarg{pre-next specification} \opt{\meta{pre-next contents}}
+    \item \texttt{\string\next}\sarg{next specification}\oarg{next node options}
+    \item \hskip1em \meta{next contents}
+    \item \texttt{\string\next}\sarg{next specification}\oarg{next node options}
+    \item \hskip1em \meta{next contents}
+    \item \hskip2em $\vdots$
+  }
+
+  Set \meta{next contents} within overlayed TikZ nodes.  This may have the
+  effect of later text appearing to be layered on top of earlier material.  If
+  the specifications place material on mutually exclusive increments (e.g. with
+  |<+>|) then this has a similar effect to \beamer's |overprint| environment.  In
+  particular, the region occupied by the environment will correspond to the
+  largest of the nodes.  However, this behaviour can be subverted by use of
+  |\only| or similar commands within the \meta{next contents}, or |only@|
+  actions in \meta{next specification}s; these should be used with care.
+
+  By default, nodes are set with |text width = \columnwidth, inner sep=0pt| so
+  that the text fills the width of the current frame or column or minipage.
+  They are aligned at their top borders.  These defaults can be overridden, and
+  arbitrary TikZ options provided to the nodes, in one of three ways: by setting
+  options in the |incremental layer| TikZ style, by placing them in the optional
+  \meta{node options} argument to the environment, or by placing them in the
+  optional \meta{next node options} after a |\next| (and after any \meta{next
+    specification}).
+
+  Three shorthand node alignment keys are available: |t| aligns the nodes at
+  their top edges (the default); |b| at their bottom edges and |c| at their
+  centres.
+
+  The entire environment is set within a single |tikzpicture|.  Thus any
+  \meta{pre-next contents} or the contents of |\next*| fields will be intepreted
+  as TikZ commands.  The default origin of the coordinate system is the |north|,
+  |center| or |south| anchor points of the layer nodes for |t|, |c| and |b|
+  alignment respectively.  The nodes themselves are accessible under the names
+  |(layer n)|, where |n| is the corresponding value of the |next| counter.
+  
+\end{envwithcontents}
+\begin{environment}{{layers<>}
+    \oarg{parameter spec}\marg{code}\opt{\texttt{[<}\meta{default specification}\texttt{>]}}}
+  This is a synonym for |\begin{incrementallayers} ... \end{incrementallayers}|.
+\end{environment}
+
+
+
+
+
+\section{Incremental alignment environments}\label{sec:align}
+
+Standard \LaTeX\ alignment environments including |tabular| and the \texttt{align}
+and \texttt{align*} environments from the \texttt{amsmath} package are not
+ordinarily increment-aware.  The current package introduces a partial fix for
+this, although their are remaining fragilities that may need to be worked
+around.  It is possible to make an increment-aware version of any alignment
+environment using |\CreateIncrementalAlignmentEnvironment| as described below.
+However, a few such environments are defined automatically when |beamincr| is
+loaded and these are described first, thus illustrating the behaviour once an
+increment-aware environment has been created.
+
+\vskip 2ex
+\noindent
+The following four environments are equivalent, apart from equation numbering:
+\begin{environment}{{incrementalalign}\opt{\texttt{[<}\meta{spec1}\texttt{>\&<}\meta{spec2}\texttt{>\& ...]}}}
+\end{environment}
+\begin{environment}{{align<>}\opt{\texttt{[<}\meta{spec1}\texttt{>\&<}\meta{spec2}\texttt{>\& ...]}}}
+\end{environment}
+\begin{environment}{{incrementalalign*}\opt{\texttt{[<}\meta{spec1}\texttt{>\&<}\meta{spec2}\texttt{>\& ...]}}}
+\end{environment}
+\begin{environment}{{align*<>}\opt{\texttt{[<}\meta{spec1}\texttt{>\&<}\meta{spec2}\texttt{>\& ...]}}}
+  Each pre-processes the input to |align[*]| to place an |\action<>{}| command
+  around each field, defined as the material appearing between successive |&|
+  and/or |\\| tokens.  By default, the first field on a line is called with
+  |\action<+->{}|, and up to 7 remaining ones with |\action<.->{}|.  This has
+  the effect of displaying a full line at a time, unless it has more than 8
+  fields.  The optional argument makes it possible to change this behaviour to
+  |\action<|\opt{\meta{spec1}}|>|, |\action<|\opt{\meta{spec2}}|>|, etc.\ with
+  the sequence of specifications reset to |<|\opt{\meta{spec1}}|>| at the
+  beginning of every line. If there are fewer specifications in the default than
+  fields on a single line, these sequence is repeated.  The default
+  specification values can be changed by calling
+  |\setincrementalenvspec{align*}{<new defaults>}| or similar.
+
+  The default specification for a single field can be overridden by placing a
+  field-specific specification in |<>| at its start.  This means that a
+  leading |<| in the field contents itself must be protected, e.g.\ by preceding
+  it with |{}|.
+
+  The use of |\action| means that beamer will interpret both standard
+  |action@|\meta{increment} actions and implicit ones such as |!|-prefixed
+  increment resets or |=| label assignments.
+  \example
+\begin{verbatim}
+  \begin{align*<>}[<+->&<.->] % increment after every two &s
     x\incrlabel{x} &= y  &  1 &{}< 2 \\
     </x/-> x^2 &= y^2    &  <!/x/-> e^{i\pi} &<+->= -1 \\
     \sum_n f(n) &<.-|alert@.> \to \int f(x) dx
-  \end{incralign*}
+  \end{align*<>}
 \end{verbatim}
     
     The pre-processor is not able to distinguish between the |&| alignment
@@ -520,15 +855,15 @@ should be straightforward to extend the approach used here to other
   % using token registers
   \newtoks\mymatrix
   \mymatrix={\begin{pmatrix} 1 & 2 \\ \alt<+->{3}{2} & 4 \\ \end{pmatrix}}
-  \begin{incralign}
+  \begin{align<>}
     \incrlabel{mat}\the\mymatrix \resetincr[/mat/]& \text{is \only<+->{not }singular}
-  \end{incralign}
+  \end{align<>}
 
   % using \protected
   \protected\def\mymatrix{\begin{pmatrix} 1 & 2 \\ \alt<+->{3}{2} & 4 \\ \end{pmatrix}}
-  \begin{incralign}
+  \begin{align<>}
     \incrlabel{mat}\mymatrix \resetincr[/mat/]& \text{is \only<+->{not }singular}
-  \end{incralign}
+  \end{align<>}
 
 \end{verbatim}
     It may be wise to put the |\newtoks| declaration outside the frame so as not
@@ -543,30 +878,77 @@ should be straightforward to extend the approach used here to other
 
     At present, equation numbers aren't overlay aware.
 \end{environment}
+%
+The incremental forms |incrementalgather|, |gather<>|, |incrementalgather*| and
+|gather*<>| are also created when |beamincr| is loaded.  Although these contain
+only one field per line, automatic access to \beamer\ and |beamincr| actions as
+these lines are processed can be useful.
+
+\begin{environment}{{incrementaltabular}\oarg{pos}\marg{cols}\opt{\texttt{[<}\meta{spec1}\texttt{>\&<}\meta{spec2}\texttt{>\& ...]}}}
+\end{environment}
+\begin{environment}{{tabular<>}\oarg{pos}\marg{cols}\opt{\texttt{[<}\meta{spec1}\texttt{>\&<}\meta{spec2}\texttt{>\& ...]}}}
+  These provide increment-aware versions of the standard \LaTeX\ |tabular|
+  environment.  By default  fields ae uncovered one-by-one rather than a line at
+  a time, but this behaviour can be altered by changing the default
+  specification when called or by using |\setincrementalenvspec| as described
+  below.  It may also be desirable to uncover entries column-by-column.  This
+  effect can be achieved with increment labels.
+\example
+\begin{verbatim}
+\begin{tabular<>}{cccc}[</col1-/>&</col2-/>&</col3-/>&</col4-/>]
+  <=(1)>/col1/\bf fruit & <=(2)>/col2/\bf colour  
+      & <=(3)>/col3/\bf climate & <=(4)>/col4/\bf family \\[1ex]
+  Apple & green & cool & pome \\
+  Peach & yellow & warm & drupe \\
+  Plum & purple & cool & drupe \\
+  Orange & orange & hot & citrus \\
+\end{tabular<>}  
+\end{verbatim}
+\end{environment}
+
+\begin{environment}{{incrementaltabular*}\oarg{pos}\marg{width}\marg{cols}\opt{\texttt{[<}\meta{spec1}\texttt{>\&<}\meta{spec2}\texttt{>\& ...]}}}
+\end{environment}
+\begin{environment}{{tabular*<>}\oarg{pos}\marg{width}\marg{cols}\opt{\texttt{[<}\meta{spec1}\texttt{>\&<}\meta{spec2}\texttt{>\& ...]}}}
+  These forms add the \meta{width} argument of \LaTeX's |tabular*| environment.
+\end{environment}
 
 
+\begin{command}{{\CreateIncrementalAlignmentEnvironment}\marg{base}\oarg{Nopts}\marg{Nreqs}\opt{\texttt{[<}default
+      specification\texttt{>]}}}
+  Create an increment-aware version of an alignment environment.  The \meta{base}
+  environment should process its contents in fields demarcated by |&| and/or
+  |\\| tokens.  The arguments \meta{Nopts} and \meta{Nreqs} specify the
+  numbers of optional and required arguments the base environment expects.  If
+  \meta{Nopts} is omitted it is taken to be 0.  \meta{Nreqs} must be
+  specified, but can be 0.  If the \meta{default specification} is omitted it is
+  set to |<.->|, thus displaying the environment contents at the prevailing
+  increment number in the frame.
 
-\begin{command}{\makealignincremental}
-  Make all subsequent uses of the \texttt{align} and \texttt{align*}
-  environments automatically incremental.  The original (non-incremental) forms
-  are available as \texttt{amsalign[*]}.
+  The new environment can be accessed using either of the names
+  |incremental|\meta{base} or \meta{base}|<>|.
 \end{command}
 
-\begin{command}{\makealignams}
-  Make all subsequent uses of the \texttt{align} and \texttt{align*} invoke
-  their original non-incremental forms.  
+
+\begin{command}{{\useincrementalenv}\marg{name}}
+  Make all subsequent uses of the |name| environment call the incremental
+  version.  The incremental version must already have been created.
+  \example
+\begin{verbatim}
+\useincrementalenv{align*}
+\begin{align*}[<+->]
+  % this is an incremental environment
+\end{align*}
+\end{verbatim}
 \end{command}
 
-\begin{command}{\incraligndefaultspec\oarg{new default}}
-  With the optional arg, change the default overlay specification for subsequent
-  \texttt{incralign[*]} environments (and \texttt{align[*]} if
-  |\makealignincremental| has been called).  Without the optional arg this
-  restores the package default value which is
-  |<+->&<.->&<.->&<.->&<.->&<.->&<.->&<.->|.
+\begin{command}{{\usenonincrementalenv}\marg{name}}
+  Restore the normal non-incremental behaviour of  subsequent |name| environments.
 \end{command}
 
 
-
+\begin{command}{{\setincrementalenvspec}\marg{name}\marg{default specification}}
+  Set the default specification for incremental environments of type |name|.
+\end{command}
 
 
 
@@ -620,34 +1002,22 @@ defined.  If running a recent \LaTeX\ compiler (post 2021) the command
   cases.  If used in |beamer| mode the frame will be reprocessed for every
   overlay.  This behaviour can be avoided by also including a |<beamer:1>| or
   |<beamer:-1>| (but not |<beamer:0>|!) or equivalent specification to
-  |\begin{frame}|.
+  |\begin{frame}|. although it may be useful to fully expand advanced increment
+  references when increments are reset (see \cref{sec:labels:advanced}).
 
-  An example of its use appears above.
+  An example use appears above.
 \end{command}
 
-\begin{command}{\framescanonlystate \marg{onoff}}
-  This commands disables (when \meta{onoff} = 0) or enables (when \meta{onoff} >
-  0) the effect of |\framescanonly|.  It is needed when a |\framescanonly| is
-  used in |<beamer>| mode, and the frame is then accessed with |\handoutframe|
-  or |\againframe|.  These commands will attempt to set the frame in |<beamer>|
-  or the current mode, respectively, thus invoking the |\framescanonly| call
-  within the frame again and suppressing output.  The solution is to temporarily
-  disable its effect with |\framescanonlystate{0}|, restoring after the
-  |\againframe| with |\framescanonlystate{1}|
+\begin{command}{\allowframescanonly\oarg{flag}}
+  This commands disables (with \meta{flag} = 0) or enables (with \meta{flag} >
+  0 or omitted) the effect of |\framescanonly|.  
 \end{command}
 
-\begin{command}{\parseincrspec \marg{overlay spec}}
-  Interpret any text enclosed in |/|s within \meta{overlay spec} as an increment
-  specification, replacing them with the corresponding numerical values.
-  \example
-\begin{verbatim}
-\begin{frame}
-  \resetincr[2]
-  \incrlabel{two}
-  \parseincrspec{/two/-/two(3)/} % prints 2-5
-\end{frame}
-\end{verbatim}
-  
+
+\begin{command}{\beamincrdebug \marg{flag}}
+  Turn on (\meta{flag} > 0) or off (\meta{flag} = 0) debugging mode.  When on,
+  compilation generates messages in the terminal output and log file describing
+  the rewriting actions that |beamincr| performs.
 \end{command}
 
 
@@ -658,7 +1028,7 @@ defined.  If running a recent \LaTeX\ compiler (post 2021) the command
 These sections discuss more background and some implementation details.   This
 is only likely to be of interest to users who wish to extend the approach.
 
-\subsection{Pauses and increments}
+\subsection{Pauses, increments and the \texttt{beamerpauses} counter}
 
 Both |\pause| and incremental overlay specifications access the same underlying
 counter called |beamerpauses|, but they use them in different ways.
@@ -668,31 +1038,67 @@ counter called |beamerpauses|, but they use them in different ways.
   given by the incremented |\value{beamerpauses}|. 
 \end{command}
 
-\begin{command}{\onslide<+->}
+\begin{command}{\onslide\texttt{<+->}}
   increments |beamerpauses| but then sets subsequent (or argument) material on
   the slide corresponding to the \emph{previous} value of |beamerpauses|.
 \end{command}
 
-\begin{command}{\onslide<.->}
+\begin{command}{\onslide\texttt{<.->}}
   leaves |beamerpauses| alone, but sets subsequent (or argument) material on the
   slide given by |\value{beamerpauses}-1|, unless |\value{beamerpauses}=1| in
   which case it puts subsequent material on slide 1.
 \end{command}
-
+%
 This conflict in interpretation of the |beamerpauses| counter can cause
 unintuitive effects.  The incremental specfication model is far more flexible
 and powerful, and so the commands of this package can all be interpreted in
-terms of an \emph{increment number} which equals
-|max(\value{beamerpauses}-1,1)|.  In fact, they all use the |beamerpauses|
-counter with this offset.  Thus, when commands like |\resetincr| set the
-increment value, they set |beamerpauses| to the increment + 1.  This value then
-behaves sensibly with |<+>| etc.\ specifications, but not with |\pause|.  
+terms of an \emph{increment number} which ordinarily equals
+|max(\value{beamerpauses}-1,1)|.  In fact, internally they all use the
+|beamerpauses| counter with this offset.  Thus, when commands like |\resetincr|
+set the increment value, they set |beamerpauses| to the increment + 1.  This
+value then behaves sensibly with |<+>| etc.\ specifications, but not with
+|\pause|.
+
+An exception is when the current increment is set to 0, either explicitly or by
+using an advanced (or otherwise undefined) increment reference.  In this case
+|beamerpauses| is also set to 0, not 1.  This is because |beamincr| references
+use the 0 value to detect the undefined reference, and so suppress offsets and
+ranges as described in \cref{sec:labels:advanced}.  However, subsequent uses of
+\beamer's |<+>| specification will increment |beamerpauses|, potentially placing
+text on earlier slides than intended.  This behaviour can be avoided (at the
+expense of more typing) by using |<!/.(1)/>| instead.
+
+
+\subsection{Overlay specification parsing routines}
+
+The |beamincr| overlay specification extensions work by injecting various
+parsing routines into the core \beamer\ parser (called |\beamer@masterdecode|),
+before calling the original function.  These parsers are also available as user
+commands, and may be helpful for debugging (though see also |\beamincrdebug|
+above).  
+
+\begin{command}{\parsedefincspec \marg{overlay spec}}
+  Replace any \texttt{|\~{}|} fields in \meta{overlay spec} with the current
+  default specification.
+\end{command}
+  
+\begin{command}{\parseincrspec \marg{overlay spec}}
+  Interpret any text enclosed in |/|s within \meta{overlay spec} as an increment
+  specification, replacing each with the corresponding numerical values
+  (including offset).  Also processes any open ranges internal to the label as
+  described in \cref{sec:labels:advanced}.
+\end{command}
+
+\begin{command}{\parseresetspec \marg{overlay spec}}
+\end{command}
+
+\begin{command}{\parselabelspec \marg{overlay spec}}
+\end{command}
 
 
 
 
-
-  % for reference with \slideref{foo} (and/or </foo/>).
+% for reference with \slideref{foo} (and/or </foo/>).
 %
 % The "increment number" is defined by the use of \pause and relative
 % overlay commands like \onslide<+->.  In general, it corresponds to the slide
