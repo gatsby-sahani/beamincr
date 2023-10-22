@@ -886,13 +886,16 @@
 \@incremental@env@angles{layers}
 
 \tikzset{incremental layer/.style={}}
+\tikzset{every layer/.style={}}
 
 \newcommand\@incrementallayers[1]{%
   \begin{tikzpicture}[%
       t/.style={anchor=north},
       c/.style={anchor=center},
       b/.style={anchor=south},
-      every node/.style={text width=\columnwidth,inner sep=0pt,t,incremental layer}]
+      every layer/.style={inner sep=0pt,t,incremental layer},
+      every node/.style={text width=\columnwidth}, % bizarre bug if this is omitted 
+    ]
     \@incremental{#1}
   \end{tikzpicture}
 }
@@ -901,7 +904,7 @@
   \iffirst[{#1}{\@incremental@layer@cmd@opt#1X}{\@incremental@layer@cmd@opt[]#1X}
 }
 \long\def\@incremental@layer@cmd@opt[#1]#2X{%
-  \node[#1]{#2}; 
+  \node(layer \thenext)[every layer, #1]{#2}; 
   % global options installed by every node style;  
 }
 
