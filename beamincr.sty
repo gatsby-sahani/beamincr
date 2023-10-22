@@ -567,6 +567,12 @@
   \let\incremental@do\relax\Collect@Body\@incremental%
 }{\ignorespacesafterend}
 
+\let\@endnext\relax
+\newenvironment{incrementaldo}[1]{%
+  \x@\long\x@\def\x@\incremental@do##1\@endnext{#1}\Collect@Body\@incremental%
+}{\ignorespacesafterend}
+\@incremental@env@angles{do}
+
 \newenvironment{incrementaldocmd}[2][0]{%
   \x@\newcommand\x@\incremental@do\@firstofone{[#1]{#2}}\Collect@Body\@incremental%
 }{\ignorespacesafterend}
@@ -577,6 +583,8 @@
 
 
 \newcounter{next}
+
+%% incremental[do] internals
 
 % process the body of environment
 \long\def\@incremental#1{%
@@ -629,7 +637,7 @@
 % #2: field contents
 % #3: remaining fields
 \long\def\@incremental@do@next<#1>#2\next#3X{%
-    \action<#1>{\incremental@do#2}%
+    \action<#1>{\incremental@do#2\@endnext}%
     \@ifempty{#3}%
       {}% done
       {\stepcounter{next}\@incremental@next@chkstar#3X}%
