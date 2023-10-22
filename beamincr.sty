@@ -874,43 +874,61 @@
 
 
 %%
+%% TikZ-dependent code -- only if tikz loaded
+%%
 
-\@ifpackageloaded{tikz}{
+% execute after preamble to allow tikz to be loaded after beamincr
+
+\AtEndPreamble{\@ifpackageloaded{tikz}{
 
 \newenvironment{incrementallayers}[1][]{%
-  % if the optional arg contains an overlay spec, 
+  % check if the optional arg contains an overlay spec,
   \iffirst<{#1}{\def\beamer@defaultospec{#1}}{\tikzset{incremental layer/.append style={#1}}}
-  \x@\long\x@\def\x@\incremental@do##1\@endnext{\node[#1]{{##1}};}
-     \Collect@Body\@incrementallayers%
+  \x@\long\x@\def\x@\incremental@do##1\@endnext{\@incremental@layer@cmd{##1}}%
+  \Collect@Body\@incrementallayers%
 }{\ignorespacesafterend}
 \@incremental@env@angles{layers}
 
 \tikzset{incremental layer/.style={}}
 \tikzset{every layer/.style={}}
+\tikzoption{layer@alignment}{\gdef\@incrementallayer@alignment{#1}}
 
 \newcommand\@incrementallayers[1]{%
   \begin{tikzpicture}[%
-      t/.style={anchor=north},
-      c/.style={anchor=center},
-      b/.style={anchor=south},
+      t/.style={layer@alignment=t, anchor=north},
+      c/.style={layer@alignment=c, anchor=center},
+      b/.style={layer@alignment=b, anchor=south},
       every layer/.style={inner sep=0pt,t,incremental layer},
-      every node/.style={text width=\columnwidth}, % bizarre bug if this is omitted 
     ]
+    \gdef\@incremental@layer@list{}
     \@incremental{#1}
   \end{tikzpicture}
 }
 
 \long\def\@incremental@layer@cmd#1{%
   \iffirst[{#1}{\@incremental@layer@cmd@opt#1X}{\@incremental@layer@cmd@opt[]#1X}
-}
+  }
 \long\def\@incremental@layer@cmd@opt[#1]#2X{%
-  \node(layer \thenext)[every layer, #1]{#2}; 
+  \xdef\@incremental@layer@list{\@incremental@layer@list (layer \thenext)}%
+  \node(layer \thenext)[text width=\columnwidth,every layer, #1]{{#2}};
   % global options installed by every node style;  
 }
 
+\usetikzlibrary{fit}
+\tikzset{fit layers/.style={fit=\@incremental@layer@list}}
 
+\tikzoption{bounding xy t}{\tikzset{shift=(#1.north west), x=(#1.north east), y=(#1.south west)}}
+\tikzoption{bounding xy c}{\tikzset{shift=(#1.center), x=(#1.east), y=(#1.north)}}
+\tikzoption{bounding xy b}{\tikzset{shift=(#1.south west), x=(#1.south east), y=(#1.north west)}}
 
-} %% end tikz-dependent extensions
+\newenvironment{boundinglayerscope}[1][]
+  {\node (bounding layer) [fit layers,inner sep=0pt,draw]{};
+    % insert #1 twice: first allow layer alignment to be overridden, then to allow the xy coordinates
+    % to be changed
+    \begin{scope}[#1, bounding xy \@incrementallayer@alignment=bounding layer, #1]}
+  {\end{scope}}
+
+}} %% end tikz-dependent extensions
 
 \catcode`X=11
 
