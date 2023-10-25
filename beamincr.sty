@@ -275,19 +275,46 @@
 %%
 
 \newcommand\usepointer[2][@]{%
-  \gdef\@pointon{#2}%
-  \ifstrequal{#1}{@}{\gdef\@pointoff{\hphantom{#2}}}{\gdef\@pointoff{#1}}
+  \gdef\@pointon{\@pointer@set{#2}}%
+  \ifstrequal{#1}{@}% @_11 shouldn't be used by user -- implies use phantom
+    {\gdef\@pointoff{\@pointer@set{\phantom{#2}}}}%
+    {\gdef\@pointoff{\@pointer@set{#1}}}%
 }
 \usepointer{\raisebox{0.3ex}{\alert{$\blacktriangleright$}}}
-% needs {bbding}
+% another choice: needs {bbding}
 % \usepointer{\raisebox{-0.4ex}{\alert{\HandRight}}}
 
-\newcommand<>\point{%
-  \ifnumgreater{\@itemdepth}{0}% if in a list
-    {\only#1{\def\@itemlabel{\@pointon}}}% put pointer in the item label
-    {\alt#1{\@pointon}{\@pointoff}}% otherwise just print it
+
+\newcommand\useoverprintpointer{\def\@pointer@set##1{\makebox[0pt][r]{##1}}}
+\newcommand\useuncoverpointer{\def\@pointer@set{}}
+\useoverprintpointer
+
+\newcommand<>\point[1]{%
+  {\@point{#2} #1}% group to prevent \pointto activation out of scope
 }
-\newenvironment<>{pointenv}{\point#1}{}
+\newenvironment<>{pointenv}{\@point{#1}}{}% environment groups for us
+
+% place pointers within text (or tikz)
+\def\pointto{\@pointnow}
+
+\let\@pointnow\@pointoff % turn off \pointto outside \point
+\def\@point#1{%
+% tikz has disabled \iftikz@inside@picture so instead test for \useasboundingbox@orig
+  \alt#1{\let\@pointnow=\@pointon}{\let\@pointnow=\@pointoff}%
+  \ifdef{\useasboundingbox}{}% if in tikz don't print anything
+    {% not in tikz
+      % check for lists -- this code will fail if itemize is nested under enum
+      \ifnumgreater{\@listdepth}{0}% if in a ilst
+        {\ifnumgreater{\@enumdepth}{0}% if in enumerate
+          % put pointer before enum label (only barfs on edef)
+          {\only#1{\x@\def\x@\@itemlabel\x@{\x@\@pointnow\@itemlabel}}}
+          {\ifnumgreater{\@itemdepth}{0}% if in itemize
+            {\only#1{\def\@itemlabel{\@pointnow}}}% put pointer in the item label
+            {}% if other list do nothing
+        }}{% not in a list
+          \@pointnow% print the pointer
+    }}%
+}
 
 
 %% \parseincrspec - parse /incrlabel/ refs
@@ -926,9 +953,26 @@
 
 \AtEndPreamble{\@ifpackageloaded{tikz}{
 
+% style for pointers in tikz
+\tikzset{point to/.default=180}
+\tikzset{point to/.code={\@pointto@call#1;}}
+\def\@pointto@call{\@ifnextchar[{\@pointto@call@}{\@pointto@call@[]}}
+\def\@pointto@call@[#1]#2;{%
+  \pgfkeysalso{append after command={(\tikzlastnode.center)--(\tikzlastnode.#2)
+      node[pos=1,sloped,rotate=180,allow upside down,inner sep=0pt,every pointer,#1]{\@pointnow}}}%
+}
+\tikzset{every pointer/.style={}}
+\tikzset{pointer sep/.style={xshift=#1*(-1)}}
+
+
+%  label={[inner sep=0pt,rotate={180+#1},anchor=center,draw]#1:{\@pointnow}}}}
+
+
+% layers<> environment
+
 \newenvironment{incrementallayers}[1][]{%
   % check if the optional arg contains an overlay spec,
-  \iffirst<{#1}{\def\beamer@defaultospec{#1}}{\tikzset{incremental layer/.append style={#1}}}
+  \iffirst<{#1}{\def\beamer@defaultospec{#1}}{\tikzset{incremental layer/.append style={#1}}}%
   \x@\long\x@\def\x@\incremental@do##1\@endnext{\@incremental@layer@cmd{##1}}%
   \Collect@Body\@incrementallayers%
 }{\ignorespacesafterend}
@@ -955,7 +999,7 @@
   }
 \long\def\@incremental@layer@cmd@opt[#1]#2X{%
   \xdef\@incremental@layer@list{\@incremental@layer@list (layer \thenext)}%
-  \node(layer \thenext)[text width=\columnwidth,every layer, #1]{{#2}};
+  \node(layer \thenext)[text width=\columnwidth,every layer, point to=180,#1]{{#2}};
   % global options installed by every node style;  
 }
 
