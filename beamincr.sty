@@ -274,6 +274,20 @@
 %% pointer actions
 %%
 
+% \point and \point* and point@spec
+\newcommand\point{%
+  \@ifstar{\@point@star}{\@point}%
+}
+\newenvironment<>{pointenv}{\@@point{#1}}{\ignorespacesafterend}% environment groups for us
+
+% pointers@spec (\pointers use is available but undocumented)
+\newcommand<>\pointers[1]{%
+  {\@pointersactivate{#2}#1}%% group to prevent \point* activation out of scope
+}
+\newenvironment<>{pointersenv}{\@pointersactivate{#1}}{\ignorespacesafterend}% environment groups for us
+
+
+% pointer configuration
 \newcommand\usepointer[2][@]{%
   \def\@pointon{\@pointer@set{#2}}%
   \ifstrequal{#1}{@}% @_11 shouldn't be used by user -- implies use phantom
@@ -284,32 +298,36 @@
 % another choice: needs {bbding}
 % \usepointer{\raisebox{-0.4ex}{\alert{\HandRight}}}
 
-
 \newcommand\useoverprintpointer{\def\@pointer@set##1{\makebox[0pt][r]{##1}}}
 \newcommand\useuncoverpointer{\def\@pointer@set{}}
 \useoverprintpointer
 
-\newcommand\point{%
-  \@ifstar{\pointto}{%
-    \@ifnextchar<{\@point}{\@point<*>}%
+
+% internals
+
+% \point* - place pointers within text (or tikz)
+\def\@point@star{%
+  \@ifnextchar[{\pointtonode}{%
+    \@ifnextchar\bgroup{\pointtonode}{\@pointnow}%
   }%
 }
+% non-tikz default, overridden in tikz section below  
+\newcommand\pointtonode[2][]{\@pointnow{#1}}
 
-\def\@point<#1>#2{%
-  {\@@point{<#1>} #2}% group to prevent \pointto activation out of scope
+% nonstarred \point
+\newcommand<>\@point[1]{%
+  {\@@point{#2} #1}% group with argument to prevent \point* activation out of scope
 }
 
-\newenvironment<>{pointenv}{\@@point{#1}}{}% environment groups for us
+\let\@pointnow\@pointoff % turn off any \point* used outside \point[ers] scope
 
-% place pointers within text (or tikz)
-\def\pointto{\@pointnow}
-
-\let\@pointnow\@pointoff % turn off \pointto if used outside any \point scope
+\def\@pointersactivate#1{\alt#1{\let\@pointnow=\@pointon}{\let\@pointnow=\@pointoff}}%
 
 \def\@@point#1{%
-  \alt#1{\let\@pointnow=\@pointon}{\let\@pointnow=\@pointoff}%
-  % tikz has disabled \iftikz@inside@picture so instead test for \useasboundingbox@orig
-  \ifdef{\useasboundingbox}{}% if in tikz don't print anything
+  \@pointersactivate{#1}%
+  % context-dependent pointer placement
+  % tikz has disabled \iftikz@inside@picture so instead test for \useasboundingbox
+  \ifdef{\useasboundingbox}{}% no pointer in tikz
     {% not in tikz
       % check for lists -- this code will fail if itemize is nested under enum
       \ifnumgreater{\@listdepth}{0}% if in a ilst
@@ -324,6 +342,10 @@
     }}%
 }
 
+
+%%
+%% overlay/action specification parsing
+%%
 
 %% \parseincrspec - parse /incrlabel/ refs
 % \parseincrspec{spec} replaces incr labels within // chars with the
@@ -378,8 +400,6 @@
     }%
 }
 \def\@gobblexdash#1X-{}
-
-
 
 
 
@@ -961,7 +981,10 @@
 
 \AtEndPreamble{\@ifpackageloaded{tikz}{
 
-% style for pointers in tikz
+%% 
+%% style for pointers in tikz
+%%
+
 \tikzset{pointer/.default=180}
 \tikzset{pointer/.code={\@pointer@call#1;}}
 \def\@pointer@call{\@ifnextchar[{\@pointer@call@}{\@pointer@call@[]}}
@@ -973,12 +996,13 @@
 \tikzset{pointer sep/.style={xshift=#1*(-1)}}
 \tikzset{pointer coordinate/.style={circle,inner sep=0pt,minimum size=0.1pt,node contents={}}}
 
-\newcommand\pointtonode[2][180]{\tikz[baseline]\node[anchor=base,text height=1.5ex,inner sep=0pt,pointer={#1}]{#2};}
+\renewcommand\pointtonode[2][180]{\tikz[baseline]\node[anchor=base,text height=1.5ex,inner sep=0pt,pointer={#1}]{#2};}
 
 
 
-
-% layers<> environment
+%% 
+%% layers<> environment
+%%
 
 \newenvironment{incrementallayers}[1][]{%
   % check if the optional arg contains an overlay spec,
@@ -1030,6 +1054,3 @@
 }} %% end tikz-dependent extensions
 
 \catcode`X=11
-
-               
-               
