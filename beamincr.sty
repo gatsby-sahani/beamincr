@@ -271,6 +271,18 @@
 \def\@@incrref@offset#1#2{\ifnumequal{#1}{0}{0}{\number\numexpr #1+#2\relax}}
 
 %% 
+%% alerts
+%%
+
+% \alert and \alert*
+\let\@alert@orig=\alert
+\def\alert{\@ifstar{\@alert@star}{\@alert@orig}}
+\newcommand<>\alerts[1]{{\@alerts@activate{#2}#1}}%
+\newenvironment<>{alertsenv}{\@alerts@activate{#1}}{\ignorespacesafterend}
+\def\@alerts@activate#1{\alt#1{\let\@alertnow=\@alert@orig}{\let\@alertnow=\relax}}
+\def\@alert@star#1{\@alertnow{#1}}
+
+%% 
 %% pointer actions
 %%
 
