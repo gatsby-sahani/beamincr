@@ -304,11 +304,20 @@ redisplay certain slides in the frame with |\afterframe| or |\handoutframe|
 (described below).
 
 \begin{command}{\incrlabel\sarg{incr}\marg{label}}
+\end{command}
+\begin{command}{\incrlabel\sarg{incr}\opt{\meta{=}}\texttt{/}\meta{label}\texttt{/}}
   By default, this command attaches the current increment number to the label
   \meta{label}.  Once defined, the labelled increment can be recovered in
   (almost) any overlay spec using the constructs discussed below.  The
   \meta{label} can contain most characters, but should not start with any of the
   characters |.!=| or contain any of |()-~|.
+
+  The |=| in the second form is optional, but if it is present then the
+  |/|\meta{label}|/| may be separated from the |=| by additional material, which
+  will be left in place.  The label must appear at the same grouping
+  level as the |\incrlabel=| command and before the end of the current paragraph.
+  This is similar to the behaviour of the |=| action described in
+  \cref{sec:actions:=}.
 
   If the optional \meta{incr} is provided, \meta{label} is set to its value.
   The restrictions on \meta{incr} are the same as for |\resetincr|: it can be a
@@ -319,7 +328,7 @@ redisplay certain slides in the frame with |\afterframe| or |\handoutframe|
   If \marg{label} starts with a number in parentheses (e.g. |(2)x|) then this
   number is added to the current increment, or to the value of \meta{incr},
   to obtain the label value.  Thus, the effect of the command above can also be
-  achieved by  |\incrlabel{(2)x}|.  
+  achieved by |\incrlabel{(2)x}|.  
 \end{command}
 
 \begin{command}{\incrref \marg{incr spec}}
@@ -333,7 +342,7 @@ The general form of an increment specification is
   The label can be a string assigned by a call to |\incrlabel|, or the special
   label `|.|' which refers to the current increment (this is subtly different to
   the incremental overlay specification `|.|').  A further special label `|!|'
-  is introduced in \cref{sec:labels:setting}.  The \meta{offset}, if given, is
+  is introduced in \cref{sec:actions:!}.  The \meta{offset}, if given, is
   added to the increment indicated by the label.  It can be negative.
 
   Increment specifications can be used as part of almost any overlay
@@ -391,7 +400,13 @@ There is also a similar new command called |\handoutframe| to render more than
 one overlay from a frame in \texttt{handout} or similar modes that, by default,
 just show a single slide with all the overlays collapsed.  See \cref{sec:helper}.
 
-\subsection{Setting increments in overlay action specifications} \label{sec:labels:setting}
+\section{Enhanced overlay action specifications}\label{sec:actions}
+
+This section discusses further extensions to the overlay specification syntax,
+and its interaction with increments and increment labels.
+
+
+\subsection{Setting increments in overlay action specifications} \label{sec:actions:!}
 
 It is possible to use the \beamer\ syntax for actions in overlays to reset the
 increment number.  This can be done using the explicit |resetincr@|\meta{increment} action or
@@ -433,12 +448,12 @@ environments like |block| and |theorem|.  This package adds the fields of
 incremental (\cref{sec:envs}) and incremental alignment environments
 (\cref{sec:align}) to this list.  In the absence of any action specifications,
 |\action| acts like |\uncover| (or |\onslide| with an argument).  Note that
-|\fromslide| (\cref{sec:setting}) can act like an |\onslide| declaration while
+|\fromslide| (\cref{sec:setting}) can act like an |\onslide| \emph{declaration} while
 also setting the increment.
 
-\subsection{Assigning labels from overlay action specifications}
+\subsection{Assigning labels from overlay action specifications} \label{sec:actions:=}
 
-The \verb^<...|=^\opt{\texttt{(}\meta{offset}\texttt{)}}\verb^| ...>^ syntax can
+The \texttt{<$\cdots$\char`|=}\opt{\texttt{(}\meta{offset}\texttt{)}}\texttt{\char`|$\cdots$>} syntax can
 be used to assign a label using an action specification.  The name of the label
 to be assigned must be enclosed in \texttt{//}s within the \emph{argument} of
 the |\action| (or |\item| or |\next| or alignment field
@@ -463,20 +478,21 @@ illustrate the use of assignment offsets: if \texttt{=} is followed by a number
 in parentheses, this is treated as an offset to add to the current increment at
 assignment, in the same way as indicated by the optional |<|\meta{incr}|>|
 argument to |\incrlabel|.  The same effect can be achieved by placing the offset
-before the label name. 
+before the label name within the enclosing \texttt{//}.
 
-If no |/label/| is found or if the name is empty, the action tries to do nothing
-quietly.  This makes it possible to use an |=| in a default spec, but only
-assign a label to some of the steps.  However, this behaviour comes with
+If no \texttt{/label/} is found or if the name is empty, the action tries to do
+nothing quietly.  This makes it possible to use an \texttt{=} in a default spec,
+but only assign a label on selected steps.  However, this behaviour comes with
 warnings, and should be used with caution.  First, because of the way \beamer's
-internals work, it is not currently possible to omit the |//| in an |\item|,
-although the label can be empty (omission is fine in the fields of an
+internals work, it is not currently possible to omit the \texttt{//} in an
+|\item|, although the label can be empty (omission is fine in the fields of an
 incremental or incremental alignment environment).  Second, if there happens to
-be one more or more |/| characters in the argument to the action, the text
-between them (or from a single |/| to the end) will be interpreted as a label,
-unless an explicit |//| pair appears first.  You have been warned!
+be one more or more \texttt{/} characters in the argument to the action, the
+text between them (or from a single \texttt{/} to the end) will be interpreted
+as a label, unless an explicit \texttt{//} pair appears first.  You have been
+warned!
 
-\subsection{Extending default overlay or action specifications}
+\subsection{Extending default overlay or action specifications} \label{sec:actions:~}
 
 By default, explicit overlay or action specifications override any defaults that
 might apply.  It may sometimes be convenient to instead extend the default.  The
@@ -495,7 +511,7 @@ Within incremental alignment environments (\cref{sec:align}), a |~| will
 incorporate the field-specific default.
 
 
-\subsection{Advanced references: using labels defined later} \label{sec:labels:advanced}
+\subsection{Advanced references: using labels defined later} \label{sec:actions:advanced}
 
 \begin{command}{\allowundefinedincrlabels\oarg{flag}}
   If called alone, or with option \meta{\opt{flag}} > 0, tells \LaTeX\ not to
@@ -578,7 +594,16 @@ is a risk of creating an infinite loop.
 The |beamincr| package provides a set of new increment-aware environments.
 These are described in the present section.  It also makes it possible to use
 increment specifications within alignment environments such as |tabular| or
-\AmSTeX\ |align|; these are discussed in \cref{sec:align}
+\AmSTeX\ |align|; these are discussed in \cref{sec:align}.
+
+Each new environment is accessible under two, otherwise equivalent, names.  A
+common base name is either preceded by the word \texttt{incremental} or followed
+by the symbols \texttt{<>}.  The environments in this section separate material
+into overlays using the token |\next| or |\next*|.  Many will also apply an
+implicit or explicitly defined command to that material when |\next| is used,
+but omit the command for |\next*|.
+
+\subsection{Standard incremental environments}\label{sec:envs:incremental}
 
 \begin{envwithcontents}{{incremental}
     \opt{\texttt{[<}\meta{default specification}\texttt{>]}}}
@@ -591,7 +616,7 @@ increment specifications within alignment environments such as |tabular| or
   }
   This environment can be thought of as an increment-aware |itemize| without the
   list formatting.  This makes it suitable for incremental control of a wider
-  range of types of code, such as tikz drawing commands.
+  range of types of code, such as \TikZ\ drawing commands.
 %
   The keyword |\next| within the environment acts like |\item| in terms of
   incremental processing: the \meta{next contents} are set within an |\action|
@@ -629,7 +654,8 @@ increment specifications within alignment environments such as |tabular| or
 \begin{environment}{{<>}\opt{\texttt{[<}\meta{default specification}\texttt{>]}}}
   This is a synonym for |\begin{incremental} ... \end{incremental}|.
 \end{environment}
-
+%
+The following environments apply a specified command each overlay's contents.
 
 \begin{envwithcontents}{{incrementaldo}
     \marg{command definition}\opt{\texttt{[<}\meta{default specification}\texttt{>]}}}
@@ -745,7 +771,7 @@ increment specifications within alignment environments such as |tabular| or
 \end{environment}
 
 
-\subsection{\TikZ-based incremental environments}
+\subsection{\TikZ-based incremental environments}\label{sec:envs:tikz}
 
 The following environments use \TikZ\ picture commands to create their effects.
 They will only be defined if \TikZ\ is also loaded in the document preamble.
@@ -1016,8 +1042,119 @@ line at a time (using |<+->|).
 
 
 
+\section{Pointing at things}\label{sec:point}
+
+\begin{command}{\point\sarg{overlay specification}\marg{contents}}
+  In normal text, insert a pointer before \meta{contents} on the specified
+  slides.  If \meta{contents} includes any |\point*| commands, pointers are
+  inserted at the locations of these commands at the same time.
+
+  If called within a \TikZ\ picture, the |\point| command does not insert a
+  pointer itself.  Instead, any pointer defined by the \texttt{pointer} option
+  to any nodes in \meta{contents} is activated.  See the description of
+  \texttt{pointer} below.
+\end{command}
+
+\begin{command}{{<point@}\opt{spec}\textcolor{red}{\tt >}}
+  The action form of |\point| can be used in all contexts where an action
+  specification is valid.  Its behaviour around normal text or \TikZ\ code is as
+  above.  In \texttt{itemize} environments it replaces the default item label
+  with the pointer\footnote{Although if the \texttt{itemize} is nested within an
+    \texttt{enumerate}, it inherits the \texttt{enumerate} behaviour.}.  In
+  \texttt{enumerate} environments it prepends the pointer to the default label.
+  In other list environments, or when the label is set explicitly as an optional
+  argument to |\item|, it has no direct effect.  However any |\point*| commands
+  in the item label or text are activated.
+\end{command}
+
+\begin{command}{\point*}
+  Insert a pointer when an enclosing |\point| command or action is active.
+\end{command}
+
+\begin{command}{{pointer}\opt{=}\oarg{pointer node options}\opt{\meta{angle}}}
+  This is a \TikZ\ option that can be passed to a \texttt{node} to insert a
+  pointer drawn towards the node whenever an enclosing |\point| command or
+  action is active.  If an \meta{angle} is specified, the pointer is drawn
+  towards the corresponding point on the node boundary; this can be specified as
+  a numerical angle or a direction like \texttt{north}.  The default angle is
+  \texttt{west} or \texttt{180}, so that the pointer points to the node from the
+  left.  The pointer itself is drawn within a node: this behaviour is very
+  similar to the regular \TikZ\ node \texttt{label} option, except that the
+  pointer node is automatically sloped so as to point inwards.
+
+  The current implementation does not work well with \texttt{coordinate}s.  The
+  alternative \texttt{pointer coordinate} style creates an empty circular node
+  of 0.1pt size, which is broadly equivalent.
+
+  If \meta{pointer node options} are specified (generally requiring braces
+  around the entire option value to protect \TikZ's option parsing from seeing
+  the |[]|s) these are passed to the pointer node.  A few options may be
+  particularly useful:
+  \begin{description}
+    \item[\tt pos=\meta{scale}] adjusts the placement of the pointer as a
+      fraction of the distance from the target node centre to its boundary.  The
+      default is 1.0.  This option is unlikely to be useful when the target is a
+      \texttt{pointer coordinate}.
+    \item[\tt pointer sep=\meta{dimen}] adds \meta{dimen} to the distance of the
+      pointer from the target node.
+    \item[\tt rotate=\meta{angle}] rotates the pointer relative to its initial
+      angle.
+  \end{description}
+
+\end{command}
 
 
+\begin{command}{\pointtonode\oarg{{\tt pointer} options}\marg{contents}}
+  This is shorthand for
+\begin{verbatim}
+  \tikz[baseline]\node[anchor=base,text height=1.5ex,inner sep=0pt,pointer={#1}]{#2};
+\end{verbatim}
+The spacing adjustments ensure that the contents in the node are printed in
+alignment with the surrounding text, and that pointers to an empty node appear
+at a similar height to those inserted by |\point| or |\point*|.  The
+availability of \meta{{\tt pointer} options} provides flexibility in the pointer
+placement.
+\end{command}
+
+\begin{command}{\usepointer\oarg{inactive glyph}\marg{pointer glyph}}
+  Use \meta{pointer glyph} for subsequent pointers in the current group.  If the
+  optional argument is absent, then the pointer is replaced by a phantom of the
+  same size when inactive (the size only matters if |\useuncoverpointer| is
+  active).  If it is given, then inactive pointers are replaced by
+  \meta{inactive glyph} (which may be empty).  \example
+\begin{verbatim}
+\usepointer{\raisebox{0.3ex}{\alert{$\blacktriangleright$}}} % the default
+\usepointer{\raisebox{-0.4ex}{\alert{\HandRight}}} % requires \usepackage{bbding}
+\end{verbatim}
+Note that some adjustment of the vertical placement, as in these examples, may
+be necessary to align the pointer appropriately with the text.
+
+The effect of this command is local to the containing group. 
+
+The pointer appearance should really be controlled through \beamer's template
+mechanism, but that's a project for another day.
+\end{command}
+
+\begin{command}{\useoverprintpointer}
+  Print subsequent pointers (and any inactive glyphs) in the current group
+  \emph{over} existing material, without reserving any space for them
+  (internally, they set within a zero-width box). This is the default, and
+  avoids the dilemma of either leaving blank spaces for inactive pointers, or
+  having text rearrange when the pointer appears.
+
+  The effect of this command is local to the containing group. 
+\end{command}
+
+\begin{command}{\useuncoverpointer}
+  Set subsequent pointers and any inactive glyph in the current group as normal
+  text, taking up space on the page.  If no inactive glyph has been specified,
+  the effect is to leave a blank space when the pointer is inactive, much like
+  the effect of the |\uncover| or |\onslide| commands.  If the inactive glyph is
+  set to the empty string, there is no blank space, but surrounding text is
+  rearranged to make room for the pointer when it becomes active.
+
+  The effect of this command is local to the containing group. 
+\end{command}
 
 \section{Misc helper functions}\label{sec:helper}
 
@@ -1067,7 +1204,7 @@ defined.  If running a recent \LaTeX\ compiler (post 2021) the command
   overlay.  This behaviour can be avoided by also including a |<beamer:1>| or
   |<beamer:-1>| (but not |<beamer:0>|!) or equivalent specification to
   |\begin{frame}|. although it may be useful to fully expand advanced increment
-  references when increments are reset (see \cref{sec:labels:advanced}).
+  references when increments are reset (see \cref{sec:actions:advanced}).
 
   An example use appears above.
 \end{command}
@@ -1127,7 +1264,7 @@ An exception is when the current increment is set to 0, either explicitly or by
 using an advanced (or otherwise undefined) increment reference.  In this case
 |beamerpauses| is also set to 0, not 1.  This is because |beamincr| references
 use the 0 value to detect the undefined reference, and so suppress offsets and
-ranges as described in \cref{sec:labels:advanced}.  However, subsequent uses of
+ranges as described in \cref{sec:actions:advanced}.  However, subsequent uses of
 \beamer's |<+>| specification will increment |beamerpauses|, potentially placing
 text on earlier slides than intended.  This behaviour can be avoided (at the
 expense of more typing) by using |<!/.(1)/>| instead.
@@ -1150,7 +1287,7 @@ above).
   Interpret any text enclosed in |/|s within \meta{overlay spec} as an increment
   specification, replacing each with the corresponding numerical values
   (including offset).  Also processes any open ranges internal to the label as
-  described in \cref{sec:labels:advanced}.
+  described in \cref{sec:actions:advanced}.
 \end{command}
 
 \begin{command}{\parseresetspec \marg{overlay spec}}
