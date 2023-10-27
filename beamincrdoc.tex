@@ -27,15 +27,39 @@
 \usepackage{tikz}
 \def\TikZ{Ti\textit{k}Z}
 
+
 %% beamer userguide macros
 \input{beamerug-macros}
 
+\setcounter{tocdepth}{4}
+\setcounter{secnumdepth}{4}
+
+
+
+\def\pdfindxcmd#1#2@{\belowpdfbookmark{\textbackslash\stripcommand#1}{\stripcommand#1}}%
+\def\pdfindxenv#1{\belowpdfbookmark{Environment: #1 }{#1}}%
+
+% modify command environment to add toc entry
+\def\command#1{%
+  \pdfindxcmd#1@%
+  \list{}{\leftmargin=2em\itemindent-\leftmargin\def\makelabel##1{\hss##1}}%
+  \item\extractcommand#1@\par\topsep=0pt}
+
+\def\extractenvironement#1#2@{%
+\pdfindxenv{#1}%
+\item{{\ttfamily\char`\\begin\char`\{\declare{#1}\char`\}}#2}%
+  {\itemsep=0pt\parskip=0pt\item{\meta{environment contents}}%
+  \item{\ttfamily\char`\\end\char`\{\declare{#1}\char`\}}}%
+  \index{#1@\protect\texttt{#1} environment}%
+  \index{Environments!#1@\protect\texttt{#1}}}
+
 % adapt the environment doc macro to provide environment contents
-\makeatletter
-\def\envwithcontents#1#2{\list{}{\leftmargin=2em\itemindent-\leftmargin\def\makelabel##1{\hss##1}}%
+\def\envwithcontents#1#2{%
+  \list{}{\leftmargin=2em\itemindent-\leftmargin\def\makelabel##1{\hss##1}}%
   \extractflexenvironement#1@{#2}\par\topsep=0pt}
 \def\endenvwithcontents{\endlist}
 \def\extractflexenvironement#1#2@#3{%
+\pdfindxenv{#1}%
 \item{{\ttfamily\char`\\begin\char`\{\declare{#1}\char`\}}#2}%
   {\itemsep=0pt\parskip=0pt%
     {\itemindent=-1em #3}%
@@ -43,7 +67,6 @@
   }%
   \index{#1@\protect\texttt{#1} environment}%
   \index{Environments!#1@\protect\texttt{#1}}}
-\makeatother
 
 
 %% Maths
