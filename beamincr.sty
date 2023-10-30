@@ -808,7 +808,7 @@
 
 %% user-facing incremental align commands
 
-%% \CreateIncrementalAlignEnvironment{name}[Nopts]{Nargs}[defaultspec]
+%% \CreateIncrementalAlignEnvironment{name}[Nopts]{Nargs}[defaultspec][base environment]
 % Create an incremental version of the named environment.  The new
 % environment is accessible as either {incrementalname} or {name<>}.
 
@@ -816,7 +816,10 @@
   \@ifnextchar[{\@createincralign@opt{#1}}{\@createincralign@opt{#1}[0]}
 }
 \def\@createincralign@opt#1[#2]#3{%
-  \@ifnextchar[{\@createincralign#1[#2]#3}{\@createincralign#1[#2]#3[<.->]}%
+  \@ifnextchar[{\@createincralign@opt@#1[#2]#3}{\@createincralign#1[#2]#3[<.->][#1]}%
+}
+\def\@createincralign@opt@#1[#2]#3[#4]{%
+  \@ifnextchar[{\@createincralign#1[#2]#3[#4]}{\@createincralign#1[#2]#3[#4][#1]}%
 }
   
 
@@ -850,15 +853,15 @@
 % token register to collect the processed toks               
 \newtoks\@incraligntoks
 
-\def\@createincralign#1[#2]#3[#4]{%
-  \global\csletcs{#1@orig}{#1}%
-  \global\csletcs{end#1@orig}{end#1}%
+\def\@createincralign#1[#2]#3[#4][#5]{%
+  \global\csletcs{#1@orig}{#5}%
+  \global\csletcs{end#1@orig}{end#5}%
   \csdef{@incralign@#1@numopt}{#2}
   \csdef{@incralign@#1@numarg}{#3}
   \csdef{@incralign@#1@defaultspec}{#4}
   \newenvironment{incremental#1}{%
     \def\@incralign@this####1{\@incralign[#1]{####1}}%
-    \collect@body\@incralign@this}{}%
+    \collect@body\@incralign@this}{\ignorespacesafterend}%
   \@incremental@env@angles{#1}%
   % \csletcs{#1<>}{incremental#1}%
   % \csletcs{end#1<>}{endincremental#1}%
@@ -868,7 +871,7 @@
   \@incraligntoks={}% clear processed token list
   \debug@message{send to incralign@process: \unexpanded{#2}\\X^^J}%
   \@incralign@readargs{#1}{\csuse{@incralign@#1@numopt}}{\csuse{@incralign@#1@numarg}}#2\\X% process raw body token by token (\\ added to last line wiill be removed)
-  \debug@message{send to #1: \the\@incraligntoks^^J}%
+  \debug@message{send to #1@orig: \the\@incraligntoks^^J}%
   \def\beginenv{\begin{#1@orig}}% needed for \expandafter
   \x@\beginenv% pass expanded token list to base environment
     \the\@incraligntoks
@@ -997,14 +1000,23 @@
 }
       
 
+%%
+%% tagging actions for ams numbering environments
+%%
+
+\newcommand<>\eqnum{\only#1{\tag{\theequation}\refstepcounter{equation}}}
+\newcommand<>\eqtag[1]{\only#2{\tag{#1}}}
+
 %% 
 %% create a few aligned environments by default
 %%
 
 \CreateIncrementalAlignmentEnvironment{align*}{0}[<+->&<.->&<.->&<.->&<.->&<.->&<.->&<.->]
-\CreateIncrementalAlignmentEnvironment{align}{0}[<+->&<.->&<.->&<.->&<.->&<.->&<.->&<.->]
-\CreateIncrementalAlignmentEnvironment{gather}{0}[<+->]
+%\CreateIncrementalAlignmentEnvironment{align}{0}[<+->&<.->&<.->&<.->&<.->&<.->&<.->&<.->]
+%\CreateIncrementalAlignmentEnvironment{align}{0}[<+-|eqnum\string @+->&<.->&<.->&<.->&<.->&<.->&<.->&<.->]
 \CreateIncrementalAlignmentEnvironment{gather*}{0}[<+->]
+%\CreateIncrementalAlignmentEnvironment{gather}{0}[<+->]
+%\CreateIncrementalAlignmentEnvironment{gather}{0}[<+-|eqnum\string @+->][gather*]
 \CreateIncrementalAlignmentEnvironment{tabular}[1]{1}[<.->]
 \CreateIncrementalAlignmentEnvironment{tabular*}[1]{2}[<.->]
 
