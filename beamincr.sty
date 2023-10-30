@@ -21,6 +21,8 @@
 \long\def\iffirst#1#2#3#4{\@ifempty{#2}{#4}{\@iffirst#1#2X{#3}{#4}}}
 \long\def\@iffirst#1#2#3X#4#5{\if#1#2\x@\@firstoftwo\else\x@\@secondoftwo\fi{#4}{#5}}
 
+% remove angle brackets
+\def\de@ngle<#1>{#1}
 
 % choose the first line to get debugging messages on screen and log
 \def\beamincrdebug#1{%
@@ -69,6 +71,7 @@
   \@resetincr{#2}% ignore the mode -- always "all"
 }
 \def\@resetincr#1{%
+  \debug@message{resetincr: setting current increment to #1^^J}%
 % etoolbox defcounter allows inline calculation, but local by default
   \ifnumgreater{#1}{0}%
     {\global\defcounter{beamerpauses}{#1+1}}%
@@ -270,11 +273,19 @@
 % no offset on 0 increments
 \def\@@incrref@offset#1#2{\ifnumequal{#1}{0}{0}{\number\numexpr #1+#2\relax}}
 
+
+%%
+%% change subsequent default spec from within action
+%%
+
+\newcommand<>\defaultspec[1]{\def\beamer@defaultospec{#2} #1}
+\newenvironment<>{defaultspecenv}{\def\beamer@defaultospec{#1}}{\ignorespacesafterend}
+
 %% 
 %% alerts
 %%
 
-% \alert and \alert*
+% \alert or \alert*
 \let\@alert@orig=\alert
 \def\alert{\@ifstar{\@alert@star}{\@alert@orig}}
 \newcommand<>\alerts[1]{{\@alerts@activate{#2}#1}}%
@@ -283,7 +294,7 @@
 \def\@alert@star#1{\@alertnow{#1}}
 
 %% 
-%% pointer actions
+%% pointers
 %%
 
 % \point and \point* and point@spec
@@ -297,7 +308,6 @@
   {\@pointersactivate{#2}#1}%% group to prevent \point* activation out of scope
 }
 \newenvironment<>{pointersenv}{\@pointersactivate{#1}}{\ignorespacesafterend}% environment groups for us
-
 
 % pointer configuration
 \newcommand\usepointer[2][@]{%
@@ -328,7 +338,7 @@
 
 % nonstarred \point
 \newcommand<>\@point[1]{%
-  {\@@point{#2} #1}% group with argument to prevent \point* activation out of scope
+  {\@@point{#2}#1}% group with argument to prevent \point* activation out of scope
 }
 
 \let\@pointnow\@pointoff % turn off any \point* used outside \point[ers] scope
@@ -503,24 +513,38 @@
 \def\@gobblepipe#1|{}
 
 
-%% \parsedefincspec - parse default spec inclusion
+%% \parseincludedefaultspec - parse default spec inclusion
 
-% parse | segements
-\def\parsedefincspec#1{%
-  \@parsedefincspec@field#1|X%
+% parse by | segements
+\def\parseincludedefaultspec#1{%
+  \@parseincludedefaultspec@field#1|X%
 }
-% #1: first token of field
-% #2: rest of field
+% #1: first field
+% #2: rest of spec
+\def\@parseincludedefaultspec@field#1|#2X{%
+  \@parseincludedefaultspec@fieldtilde#1~X|#2X%
+}
+% #1: field to ~
+% #2: field after ~
 % #3: rest of spec
-\def\de@ngle<#1>{#1}
-\def\@parsedefincspec@field#1#2|#3X{%
-  \ifx ~#1\x@\@firstoftwo\else\x@\@secondoftwo\fi% if field starts with @
-    {\x@\de@ngle\beamer@defaultospec}%insert default spec
-    {#1#2}%copy field
-  \@ifempty{#3}% last field
-    {}%
-    {|\@parsedefincspec@field#3X}%
+\def\@parseincludedefaultspec@fieldtilde#1~#2X|#3X{%
+  #1% copy field to first ~
+  \@ifempty{#2}{}% no tildes in field
+   {\@iffirsttilde#2X% field ended with ~ or contained ~~
+     {\@ifsecondempty#2X% ended ~
+       {\x@\de@ngle\beamer@defaultospec}%insert default spec without <>s
+       {\@putdefaultspecaction{#1}\x@\de@ngle\beamer@defaultospecX}
+     }{%
+       \@putdefaultspecaction{#1}\@copytotildetilde#2~X}%print the defaultspec@ action and copy the range
+   }%
+  \@ifempty{#3}{}%last field
+   {|\@parseincludedefaultspec@field#3X}%
 }
+
+\def\@iffirsttilde#1#2X{\ifx~#1\x@\@firstoftwo\else\x@\@secondoftwo\fi}
+\def\@ifsecondempty#1#2X{\@ifempty{#2}}
+\def\@copytotildetilde#1~~{#1}
+\def\@putdefaultspecaction#1#2X{#2|#1defaultspec\string @#2}
 
 %% 
 %% install overlay parsing in beamer commands
@@ -534,11 +558,11 @@
 \let\beamer@masterdecode@orig=\beamer@masterdecode
 % now replace it, calling the old one
 \def\beamer@masterdecode#1{%
-  \edef\parsed@spec{\parsedefincspec{#1}}%
+  \edef\parsed@spec{\parseincludedefaultspec{#1}}%
   \edef\parsed@spec{\x@\parseincrspec\x@{\parsed@spec}}%
   \edef\parsed@spec{\x@\parseresetspec\x@{\parsed@spec}}%
   \edef\parsed@spec{\x@\parselabelspec\x@{\parsed@spec}}%
-  \debug@message{masterdecode: <#1> -> <\parsed@spec>^^J}%
+  \debug@message{masterdecode: <\unexpanded{#1}> -> <\parsed@spec>^^J}%
   \x@\beamer@masterdecode@orig\x@{\parsed@spec}%
 }%
 
