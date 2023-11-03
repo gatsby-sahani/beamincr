@@ -50,7 +50,9 @@
 %% \resetincr[refspec] - (re)set the increment counter
 %%
 
-\newcounter{beamincr@lastreset}
+\newcounter{beamincr@lastreset}[framenumber] % reset for each  frame
+\resetcounteronoverlays{beamincr@lastreset}
+
 \def\resetincr{%
   \@ifnextchar<%
     {\resetincr@angle}% called as action
