@@ -33,6 +33,7 @@
 \def\ometa#1{\opt{\meta{#1}}}
 \def\sarg#1{\texttt{<\meta{#1}>}}
 \def\osarg#1{\opt{\sarg{#1}}}
+\def\optsarg#1{\opt{\tt[\sarg{#1}]}}
 \def\ott#1{\opt{\texttt{#1}}}
 \def\offset{\opt{\meta{offset}}}
 \def\ooffset{\opt{\texttt{(\meta{offset})}}}
@@ -61,41 +62,45 @@
   \item{}%
   \endlist%
 }
-\def\addtoloc#1#2{\@ifempty{#2}%
-  {\addtocontents{loc}{\protect\item{\texttt{#1}\hfill\thepage}}}%
-  {\addtocontents{loc}{\protect\item{\texttt{#1}\hfill\thepage}\\#2}}%
+\def\addtoloc#1#2{%
+  \@ifempty{#2}%
+    {\addtocontents{loc}{\protect\item{\texttt{#1}\hfill\thepage}}}%
+    {\addtocontents{loc}{\protect\item{\texttt{#1}\hfill\thepage}\\#2}}%
 }
 \def\locsection#1{\addtocontents{loc}{\vskip2ex\protect\item{\large \bf #1}}}
 \makeatother
 
 
-% add command to list and to pdfbookmarks
 \makeatletter
-\def\addcmdtoloc#1#2#3{% bookmark target; cmd header; description
-  \csxdef{@bookmark@#1}{#1.\the\numexpr\Hy@currentbookmarklevel+1\relax}%
-  \addtoloc{\string\hyperlink{#1.\the\numexpr\Hy@currentbookmarklevel+1\relax}{#2}}{#3}%
+% create a pdfbookmark, and write a macro to aux to remember the hypertarget (with level)
+\def\pdfbkmktarget#1#2{%
+  \belowpdfbookmark{#1}{#2}%
+  \csxdef{@bookmark@#2}{#2.\the\numexpr\Hy@currentbookmarklevel+1\relax}%
+  \protected@write\@auxout{}{\string\csgdef{@bookmark@#2}{#2.\the\numexpr\Hy@currentbookmarklevel+1\relax}}%
 }
-\def\mkcmdalttarget#1{%bookmark target
-  \csxdef{@bookmark@#1}{#1.\the\numexpr\Hy@currentbookmarklevel+1\relax}%
-}
-\def\cmdlink#1#2{%link target; text
+% link to the bookmark hypertarget
+\def\cmdlink#1#2{%cmd target; text
   \hyperlink{\csuse{@bookmark@#1}}{#2}%
+}
+% add command to list of commands 
+\def\addcmdtoloc#1#2#3{% bookmark target; cmd header; description
+  \addtoloc{\string\hyperlink{#1.\the\numexpr\Hy@currentbookmarklevel+1\relax}{#2}}{#3}%
 }
 \makeatother
 
 \def\bkmkcmd#1#2@#3{%
-  \belowpdfbookmark{\sanitisecommand#1}{\stripcommand#1}%
+  \pdfbkmktarget{\sanitisecommand#1}{\stripcommand#1}%
   \addcmdtoloc{\stripcommand#1}{\sanitisecommand#1#2}{#3}%
 }
 
 \def\bkmkcmdalt#1#2#3#4{%
-  \belowpdfbookmark{#1}{#2}%
+  \pdfbkmktarget{#1}{#2}%
   \ifblank{#4}{}{\addcmdtoloc{#2}{\sanitisecommand#3}{#4}}%
 }
 
 \def\bkmkenv#1#2{%
-  \belowpdfbookmark{\textbackslash begin\{#1\}\dots\textbackslash end\{#1\}}{#1}%
-  \addcmdtoloc{#1}{\textbackslash begin\{#1\}\dots\textbackslash end\{#1\}}{}%
+  \pdfbkmktarget{\textbackslash begin\{#1\}\dots\textbackslash end\{#1\}}{#1}%
+  \addcmdtoloc{#1}{\textbackslash begin\{#1\}\dots\textbackslash end\{#1\}}{#2}%
 }
 
 
@@ -107,10 +112,9 @@
 \makeatletter
 \newenvironment{commandalt}{\@ifnextchar[{\@commandalt}{\@commandalt@noopt}}{\endcommand}
 \def\@commandalt[#1]{\@ifnextchar[{\@commandalt@twoopt[#1]}{\@commandalt@twoopt[#1][#1]}}
-\def\@commandalt@noopt#1{\pdfindxcmdalt{#1}{#1}\oldcommand{#1}}
+%\def\@commandalt@noopt#1{\pdfindxcmdalt{#1}{#1}\oldcommand{#1}}
 \def\@commandalt@twoopt[#1][#2]#3#4{%
   \bkmkcmdalt{#1}{#2}{#3}{#4}%
-  \mkcmdalttarget{#2}%
   \oldcommand{#3}%
 }
 \makeatother
@@ -267,12 +271,13 @@ non-experts.  More on this below.  I strongly suggest avoiding
 \begin{command}{\resetincr\oarg{incrnum}}%
   {set increment to 1 or \meta{incrnum}}%
   %
-  This command resets the increment number to 1, or to the value defined by the
-  optional argument if given.  It doesn't directly affect the slide on which
-  subsequent text appears, but it does change effect of subsequent \texttt{<+>}
-  or \texttt{<.>} increments.  The command may be useful to synchronise overlays
-  in (say) two columns or between highlighted bullet points and highlighting in
-  a figure.  \example
+  Reset the increment number to 1, or to the value defined by the optional
+  argument if given.  This doesn't directly affect the slide on which any
+  following text appears, but it does alter the effect of subsequent
+  \texttt{<+>} or \texttt{<.>} increments (as well as the
+  \cmdlink{/!/}{/!/} reference discussed below).  This command may be
+  useful to synchronise overlays in (say) two columns or between highlighted
+  bullet points and highlighting in a figure.  \example
 \begin{verbatim}
 \begin{frame}
   \resetincr
@@ -388,12 +393,12 @@ The general form of an increment reference is
   The label can be a string assigned by a call to \cmd\incrlabel, or the
   special label `\ttx.' which refers to the current increment (this is subtly
   different to the incremental overlay specification `\ttx.').  A further
-  special label `\ttx!'  is introduced in \cref{sec:actions:!}.  The
+  special label `\cmdlink{/!/}{!}'  is introduced in \cref{sec:actions:!}.  The
   \meta{offset}, if given, is added to the increment indicated by the label.  It
   can be negative.
 
   Increment references can be used as part of almost any overlay
-  specification by enclosing them with slashes, e.g. \ttx{</foo(2)/>}.
+  specification by enclosing them within slashes, e.g. \ttx{</foo(2)/>}.
 \end{commandalt}
 \example
 \begin{verbatim}
@@ -427,11 +432,11 @@ The general form of an increment reference is
 %
 \hypertarget{incrnum}{}%
 Note that of commands discussed here, \cmd\incrref\ expects an \meta{incrref}
-specification (i.e. \meta{label}\ooffset), while \cmd\resetincr,
+specification (i.e., \meta{label}\ooffset), while \cmd\resetincr,
 \cmd\fromincr\ and \cmd\incrlabel\ expect an \meta{incrnum} specification that
-might be an \meta{incrref} in \ttx{//} (i.e. \ttx{/\meta{label}\ooffset/}) or
+might be an \meta{incrref} in \ttx{//} (i.e., \ttx{/\meta{label}\ooffset/}) or
 just a number.  Standard overlay-aware commands should all accept overlay
-specifications that include increment specs.
+specifications that include \meta{incrnum}s.
 
 One \beamer\ command (slightly patched in this package) with which named
 increments are particularly useful is \cmd\againframe.  So \example
@@ -442,10 +447,9 @@ provides an abbreviated tour of the lists.  Increment labels are associated with
 the label of the enclosing frame, and so the same names can safely be reused
 across multiple named frames.
 
-There is also a similar new command called \cmd\handoutframe\ to render
-more than one overlay from a frame in \ttx{handout} or similar modes that, by
-default, just show a single slide with all the overlays collapsed.  See
-\cref{sec:again}.
+There is also a similar new command called \cmd\handoutframe\ to render more
+than one overlay from a frame in \ttx{handout} or similar modes that otherwise
+just show a single slide with all the overlays collapsed.  See \cref{sec:again}.
 
 \section{Enhanced overlay action specifications}\label{sec:actions}
 
@@ -455,11 +459,10 @@ and its interaction with increments and increment labels.
 Many of these extensions are only valid in a context that supports
 \beamer\ actions.  According to the user guide, these are \ttc\action,
 \ttc\item, the \ttx{actionenv} environment and block environments like
-\ttx{block} and \ttx{theorem}.  This package adds the fields of
-incremental (\cref{sec:envs}) and incremental alignment environments
-(\cref{sec:align}) to this list.  In the absence of any action specifications,
-\ttc\action\ acts like \ttc\uncover\ (or \ttc\onslide\ with an
-argument).
+\ttx{block} and \ttx{theorem}.  This package adds the fields of incremental
+(\cref{sec:envs}) and incremental alignment (\cref{sec:align}) environments to
+this list.  In the absence of any action specifications, \ttc\action\ acts like
+\ttc\uncover.
 
 
 \subsection{Setting increments in overlay action specifications} \label{sec:actions:!}
@@ -467,11 +470,15 @@ argument).
 \begin{commandalt}[<resetincr@>]{{<resetincr@}\meta{incrnum}\contcmd{>}}{}
 \end{commandalt}
 \vskip-3ex
-\begin{commandalt}[<!\meta{incrnum}>][<!incrnum>]{{<!}\meta{incrnum}\opt{\tt-\meta{incrnum}}\contcmd{>}}{}
-It is possible to use the \beamer\ syntax for actions in overlays to reset the
-increment number.  This can be done using the explicit
-\ttx{resetincr@\meta{incrnum}} action or with an implicit
-\ttx{<!\meta{incrnum}>} specification.  \example
+\begin{commandalt}[<!\meta{incrnum}>][<!incrnum>]{{<}\ott{\meta{incrnum}-}\contcmd!\meta{incrnum}\ott{-\meta{incrnum}}\contcmd{>}}{}
+The current increment number can be reset using either the explicit
+\ttx{resetincr@\meta{incrnum}} action, or an implicit \ttx{<!\meta{incrnum}>}
+specification.  The \ttx!\meta{incrnum} may appear at either the start or end of
+a (possibly open) range, so no more than one of the optional \ometa{incrnum}s
+should be present.  To set to an intermediate value, use a specification like
+\ttx{<1-4,!3>}.
+%
+\example
 \begin{verbatim}
   \action<3-|resetincr@3>{body}
   \action<!3->{body}
@@ -485,31 +492,67 @@ The increment number can be a label, with optional offset:
   \action<!/x(2)/->{body on 4+}
   \onslide<+->{this on 5+}
 \end{verbatim}
-The forms \ttx{<!+>} and \ttx{<!.>} aren't supported (and wouldn't be
-useful: \ttx{<+>} already advances the increment, while \ttx{<!.>} would
-set it to its current value).  However \ttx{<!/.(\meta{offset})/>} (note the
-\ttx/ label notation) can be used to advance the increment counter by
-multiple (or negative) steps.
+The forms \ttx{<!+>} and \ttx{<!.>} aren't supported (and wouldn't be useful:
+\ttx{<+>} already advances the increment, while \ttx{<!.>} would set it to its
+current value).  However \ttx{<!/.(\meta{offset})/>} (note the \ttx/ label
+notation) can be used to advance the increment counter by multiple (or negative)
+steps.
 
 The reset takes effect after the overlay specification has been interpreted and
-before the body is set.  So any \ttx+ or \ttx. references will be relative
-to the increment in effect \emph{before} the \ttc\action.  However, the
-special increment label \ttx{/!/} can be used to access the most recent
-reset.  \example
+before the body is set.  So any \ttx+ or \ttx. references will be relative to
+the increment in effect \emph{before} the \ttc\action.
+%
+\pdfbkmktarget{}{/!/}%
+%
+However, the special increment label \ttx{/!/} can be used to access the most
+recent reset (but note the discussion of evaluation order below).
+%
+\example
 \begin{verbatim}
   \resetincr
-  \action<!/.(2)/-|alert@.>{alert too early}
-  \action<!/.(2)/->{\alert<.>{alert when uncovered}}
-  \action<!/.(2)/-|alert@/!/>{alert when uncovered}
+  \action<!/.(2)/-|alert@.>{alerts too early}
+  \action<!/.(2)/->{\alert<.>{alerts when uncovered}}
+  \action<!/.(2)/-|alert@/!/>{alerts when uncovered}
 \end{verbatim}
-It is possible to issue multiple \ttx! commands in one overlay spec but only
-the first of them will take effect.
+
+It is possible to issue multiple implicit and explicit resetincr action commands
+in one overlay spec (including at both limits of a \meta{range}).  The increment
+number in effect after the \meta{action spec} will be determined by the first
+explicit \ttx{resetincr@} action, or if there are none, the first implicit
+\ttx{!\meta{incrnum}} specification.
+
+If any actions within the same \meta{action spec} depend on a \ttx{/!/}
+increment reference, then this value will be determined by the \emph{following}
+\ttx{resetincr@} value, or if there are none, the \emph{first}
+\ttx!\meta{incrnum}, or if there are none, the most recent increment reset (by a
+\cmd\resetincr\ command or an action).  If there are no preceding resets in the
+frame, then \ttx{/!/} (along with any offset) evaluates to 0.  See the
+discussion of \cmd\allowundefinedincrlabels\ for more on 0-valued references,
+but note that this behaviour for \ttx{/!/} is independent of the
+\cmd\allowundefinedincrlabels\ state.
+%
+\example
+\begin{verbatim}
+  \resetincr
+  \action<1-5|resetincr@3|alert@/!/>{alerts on slide 1\\}
+  \action<1-5|alert@/!/>{alerts on slide 3\\}
+  \resetincr
+  \action<1-5|alert@/!/|resetincr@3>{alerts on slide 3\\}
+  \action<1-!5|point@/!/|resetincr@4|alert@/!/>{points on slide 4; alerts on slide 5\\}
+\end{verbatim}
+
+This ordering behaviour can be understood from the following two facts:
+\beamer\ applies actions in the reverse order to that in which they appear in
+the specification, and \beamincr\ maps \ttx{!\meta{incrnum}} specifications to
+explicit actions at the \emph{end} of the \meta{action spec}, preserving their
+order.
 
 Actions must be used with argument text (usually enclosed in braces) or as
-environments.  There is no equivalent to the declaration form of
-\ttc\onslide.  Note, however, that
-\cmd\fromslide\ (\cref{sec:setting}) implements an
-\ttc\onslide\ declaration while also setting the current increment.
+environments.  There is no equivalent to the declaration form of \ttc\onslide.
+Note, however, that \cmd\fromincr\ (\cref{sec:setting}) implements an
+\ttc\onslide\ declaration while also setting the current increment.  See also
+the \cmdlink{incremental}{\tt incremental} environment
+(\cref{sec:envs:incremental}).
 \end{commandalt}
 
 \subsection{Assigning labels from overlay action specifications} \label{sec:actions:=}
@@ -539,21 +582,21 @@ the first two action calls set the label \ttx{x} to 5.  The last three
 illustrate the use of assignment offsets: if \ttx{=} is followed by a number
 in parentheses, this is treated as an offset to add to the current increment at
 assignment, in the same way as indicated by the optional
-\ttx{<\meta{incrnum}>} argument to \ttc\incrlabel.  The same effect can
+\ttx{<\meta{incrnum}>} argument to \cmd\incrlabel.  The same effect can
 be achieved by placing the offset before the label name within the enclosing
 \ttx{//}.
 
 If no \ttx{/\meta{label}/} is found or if \meta{label} is empty, the action
 tries to do nothing quietly.  This makes it possible to use an \ttx{=} in a
-default spec, but only assign a label on selected steps.  However, this
+default spec, while only assigning a label on selected steps.  However, this
 behaviour comes with warnings, and should be used with caution.  First, because
 of the way \beamer's internals work, it is not currently possible to omit the
-\ttx{//} in an \ttc\item, although the label can be empty (omission is
-fine in the fields of an incremental or incremental alignment environment).
-Second, if there happens to be one more or more \ttx{/} characters in the
-argument to the action, the text between them (or from a single \ttx{/} to
-the end) will be interpreted as a label, unless an explicit \ttx{//} pair
-appears first.  You have been warned!
+\ttx{//} in an \ttc\item, although the label can be empty (omission is fine in
+the fields of an incremental or incremental alignment environment).  Second, if
+there happens to be one more or more \ttx{/} characters in the argument to the
+action, the text between them (or from a single \ttx{/} to the end) will be
+interpreted as a label, unless they appear in a group within the argument, or an
+explicit \ttx{//} pair appears first.  You have been warned!
 \end{commandalt}
 
 
@@ -563,9 +606,10 @@ appears first.  You have been warned!
 Ordinarily, explicit overlay or action specifications override any defaults that
 might apply.  It may sometimes be convenient to instead extend the default.  The
 |~| spec can be used to add the current default spec fields into an explicit
-overlay specification.  In this form, the \ttx\textasciitilde\ may be
-proceeded by, sat, a mode specification, but must not have any following text
-with the specification field (i.e. to the next \ttx\textpipe\ or \ttx>).
+overlay specification.  In this form, the \ttx\textasciitilde\ may be proceeded
+by, say, a mode specification, but must not be followed by any text with the
+specification field (i.e., to the next \ttx\textpipe\ or \ttx>).
+%
 \example
 \begin{verbatim}
   \begin{itemize}[<+-| alert@+|=>]
@@ -584,13 +628,12 @@ This extension is available is any overlay specification.
 \begin{commandalt}[<defaultspec@>]{{<defaultspec@}\meta{range}\contcmd{>}}{}
 
   Action to set the default specification for overlay references within the
-  action argument.  The \meta{increment range} may be any valid specificiation
-  for a set of slides (such as \ttx{1}, \ttx{+-} or
-  \ttx{!/foo/-/bar/}), but may not itself contain any actions.  The range is
-  evaluated within the context of the \ttx{defaultspec@} specification,
-  yielding specific slide numbers.  Thus, any labels (including \ttx{/./} and
-  \ttx{/!/}) or \ttx+ or \ttx. symbols will be replaced by their
-  current values.  For example, in
+  action argument.  The \meta{range} may be any valid specification for a set of
+  slides (such as \ttx{1}, \ttx{+-} or \ttx{!/foo/-/bar/}).  The range is
+  evaluated within the context of the \ttx{defaultspec@} specification, yielding
+  specific slide numbers.  Thus, any labels (including \ttx{/./} and \ttx{/!/})
+  or \ttx+ or \ttx. symbols will be replaced by their current values.  For
+  example, in
 \begin{verbatim}
   \resetincr[3]
   \action<+-|defaultspec@+>{\only<~>{only body} other stuff}
@@ -602,11 +645,11 @@ This extension is available is any overlay specification.
 
 \begin{commandalt}[<\textasciitilde range>][tilde range]{{<\textasciitilde}\meta{range}\contcmd{\textpipe$\cdots$>}}{}
 
-  This is equivalent to \ttx{<\meta{increment range}\textpipe
-    defaultspec@\meta{increment range}\textpipe$\cdots$>}.  That is, it executes
-  the calling action on \meta{increment range} (using normal overlay evaluation
-  rules) and also set the default specification within the action argument to
-  the evaluated range.
+  This is equivalent to \ttx{<\meta{range}\textpipe
+    defaultspec@\meta{range}\textpipe$\cdots$>}.  That is, it executes the
+  calling action on \meta{range} (using normal overlay evaluation rules) and
+  also sets the default specification within the action argument to the
+  evaluated range.
   %
   This extension only works in an action specification context.  As the body of
   the argument will usually only be visible for the specified range anyway, the
@@ -621,14 +664,14 @@ This extension is available is any overlay specification.
   \item<~~> \only<~>{\stepcounter{displayed}} % \only<5-> does not
   \end{itemize}
 \end{verbatim}
-    The \ttc\only\ commands are used to advance the counter on slides
-    where the \ttc\item s are visible.  In both cases the overlay
+    In the example, the \ttc\only\ commands are used to advance the counter on
+    slides where the \ttc\item s are visible.  In both cases the overlay
     specification to \ttc\only\ is a copy of the surrounding default
-    specification.  For the first one, this is \ttx{<+->}.  For the second,
-    it is \ttx{<+->} \emph{evaluated} within the \ttc\item\ call,
-    giving \ttx{<3->}.  The final case expands the second |~| to the default
-    \ttx{+-}, which becomes the increment specification for the item, and
-    then sets the default within the item to its value, which is \ttx{4-}.
+    specification.  For the first one, this is \ttx{<+->}.  For the second, it
+    is \ttx{<+->} \emph{evaluated} within the \ttc\item\ call, giving
+    \ttx{<3->}.  The final case expands the second |~| to the default \ttx{+-},
+    which becomes the increment specification for the item, and then sets the
+    default within the item to its value, which is \ttx{5-}.
 \end{commandalt}
 
 
@@ -713,10 +756,10 @@ is a risk of creating an infinite loop.
 
 \section{Incremental environments}\label{sec:envs}
 
-The \beamincr\ package provides a set of new increment-aware environments.
-These are described in the present section.  It also makes it possible to use
-increment specifications within alignment environments such as \ttx{tabular}
-or \AmSTeX\ \ttx{align}; these are discussed in \cref{sec:align}.
+The \beamincr\ package provides some new increment-aware environments.  These
+are described in the present section.  It also makes it possible to use
+increment specifications within alignment environments such as \ttx{tabular} or
+\AmSTeX\ \ttx{align}; these are discussed in \cref{sec:align}.
 
 Each new environment is accessible under two, otherwise equivalent, names.  A
 common base name is either preceded by the word \ttx{incremental} or followed
@@ -727,9 +770,8 @@ also apply an implicit or explicitly defined command to that material when
 
 \subsection{Standard incremental environments}\label{sec:envs:incremental}
 \locsection{Incremental environments}
-
-\begin{envwithcontents}{{incremental}
-    \opt{\ttx{[<}\meta{default specification}\ttx{>]}}}
+\tracingmacros1
+\begin{envwithcontents}{{incremental}\optsarg{default specification}}
   {\item \hskip1em \osarg{pre-next specification} \opt{\meta{pre-next contents}}
     \item \ttx{\string\next}\osarg{next specification}
     \item \hskip1em \meta{next contents}
@@ -746,7 +788,7 @@ also apply an implicit or explicitly defined command to that material when
   are set within an \ttc\action\ command.  Each \ttc\next\ call can
   be followed by an optional \osarg{next specification}, which is applied to the
   \meta{next contents}.  If the specification is omitted, then the environment
-  \opt{\meta{default specification}} is applied.  If no \meta{default
+  \ometa{default specification} is applied.  If no \meta{default
     specification} was given in the environment, then the default is inherited
   from the frame or container default.  This is ordinarily \ttx{<*>}.
 
@@ -773,14 +815,14 @@ also apply an implicit or explicitly defined command to that material when
 \end{incremental}
 \end{verbatim}
 \end{envwithcontents}
-\begin{environment}{{<>}\opt{\ttx{[<}\meta{default specification}\ttx{>]}}}
+\begin{environment}{{<>}\optsarg{default specification}}
   This is a synonym for |\begin{incremental} ... \end{incremental}|.
 \end{environment}
 %
-The following environments apply a specified command each overlay's contents.
+The following environments apply a specified command to each overlay contents.
 
 \begin{envwithcontents}{{incrementaldo}
-    \marg{command definition}\opt{\ttx{[<}\meta{default specification}\ttx{>]}}}
+    \marg{command definition}\optsarg{default specification}}
   {\item \hskip1em \osarg{pre-next specification} \opt{\meta{pre-next contents}}
     \item \ttx{\string\next}\osarg{next specification}
     \item \hskip1em \meta{next contents}
@@ -805,13 +847,13 @@ The following environments apply a specified command each overlay's contents.
   command.
   
 \end{envwithcontents}
-\begin{environment}{{do<>}\marg{command definition}\opt{\ttx{[<}\meta{default specification}\ttx{>]}}}
+\begin{environment}{{do<>}\marg{command definition}\optsarg{default specification}}
   This is a synonym for |\begin{incrementaldo} ... \end{incrementaldo}|.
 \end{environment}
 
 
 \begin{envwithcontents}{{incrementaldocmd}
-    \oarg{num args}\marg{code}\opt{\ttx{[<}\meta{default specification}\ttx{>]}}}
+    \oarg{num args}\marg{code}\optsarg{default specification}}
   {\item \hskip1em \osarg{pre-next specification} \opt{\meta{pre-next contents}}
     \item \ttx{\string\next}\osarg{next specification}
     \item \hskip1em \meta{next contents}
@@ -857,13 +899,13 @@ The following environments apply a specified command each overlay's contents.
 \end{verbatim}
 \end{envwithcontents}
 \begin{environment}{{docmd<>}
-    \oarg{num args}\marg{code}\opt{\ttx{[<}\meta{default specification}\ttx{>]}}}
+    \oarg{num args}\marg{code}\optsarg{default specification}}
   This is a synonym for |\begin{incrementaldocmd} ... \end{incrementaldocmd}|.
 \end{environment}
 
 
 \begin{envwithcontents}{{incrementaldodef}
-    \oarg{parameter spec}\marg{code}\opt{\ttx{[<}\meta{default specification}\ttx{>]}}}
+    \oarg{parameter spec}\marg{code}\optsarg{default specification}}
   {\item \hskip1em \osarg{pre-next specification} \opt{\meta{pre-next contents}}
     \item \ttx{\string\next}\osarg{next specification}
     \item \hskip1em \meta{next contents}
@@ -878,18 +920,19 @@ The following environments apply a specified command each overlay's contents.
   and is always skipped for any \meta{pre-next contents}.
 \end{envwithcontents}
 \begin{environment}{{dodef<>}
-    \oarg{parameter spec}\marg{code}\opt{\ttx{[<}\meta{default specification}\ttx{>]}}}
+    \oarg{parameter spec}\marg{code}\optsarg{default specification}}
   This is a synonym for |\begin{incrementaldodef} ... \end{incrementaldodef}|.
 \end{environment}
 
 \begin{environment}{{incrementaldolongdef}
-    \oarg{parameter spec}\marg{code}\opt{\ttx{[<}\meta{default specification}\ttx{>]}}}
+    \oarg{parameter spec}\marg{code}\optsarg{default specification}}
 
-  This form allows paragraph breaks within the arguments, but is otherwise the
-  same as |\begin{incrementaldodef} ... \end{incrementaldodef}|,
+  This form allows paragraph breaks within \meta{next contents}, but is
+  otherwise the same as \ttc{\begin\{incrementaldodef\}} \ttx{...}
+  \ttc{\end\{incrementaldodef\}},
 \end{environment}
 \begin{environment}{{dolongdef<>}
-    \oarg{parameter spec}\marg{code}\opt{\ttx{[<}\meta{default specification}\ttx{>]}}}
+    \oarg{parameter spec}\marg{code}\optsarg{default specification}}
   This is a synonym for |\begin{incrementaldolongdef} ... \end{incrementaldolongdef}|.
 \end{environment}
 
@@ -900,7 +943,7 @@ The following environments use \TikZ\ picture commands to create their effects.
 They will only be defined if \TikZ\ is also loaded in the document preamble.
 
 \begin{envwithcontents}{{incrementallayers}
-    \oarg{node options}\opt{\ttx{[<}\meta{default specification}\ttx{>]}}}
+    \oarg{node options}\optsarg{default specification}}
   {\item \hskip1em \osarg{pre-next specification} \opt{\meta{pre-next contents}}
     \item \ttx{\string\next}\osarg{next specification}\oarg{next node options}
     \item \hskip1em \meta{next contents}
@@ -936,7 +979,7 @@ They will only be defined if \TikZ\ is also loaded in the document preamble.
   \meta{pre-next contents} and the contents of any \ttc{\next*} are passed
   directly to \TikZ.  The default origin of the coordinate system is the
   \ttx{north}, \ttx{center} or \ttx{south} anchor points of the layer nodes for
-  |t|, |c| and |b| alignment respectively.  The nodes themselves are accessible
+  \ttx t, \ttx c and \ttx b alignment respectively.  The nodes themselves are accessible
   under the names \ttx{(layer \meta{n})}, where \meta{n} is the corresponding
   value of the |next| counter.
   %
@@ -948,11 +991,11 @@ They will only be defined if \TikZ\ is also loaded in the document preamble.
   \TikZ\ |scope| with the following additions.  A node called |(bounding layer)|
   is created to (tightly) fit the layers defined so far, and the |xy| coordinate
   system in the scope is redefined according to the alignment of the most recent
-  layer, or a |tcb| alignment option to \ttx{boundinglayerscope}.  The origin
-  is placed at the |north west|, |center| or |south west| of the bounding node,
-  for |t|, |c|, or |b| alignment respectively.  The |x| vector extends
-  horizontally to the east border of the bounding node, while |y| extends
-  vertically to the opposite side (or top for |c| alignment).
+  layer, or a |tcb| alignment option to \ttx{boundinglayerscope}.  The origin is
+  placed at the |north west|, |center| or |south west| of the bounding node, for
+  \ttx t, \ttx c, or \ttx b alignment respectively.  The \ttx x vector extends
+  horizontally to the east border of the bounding node, while \ttx y extends
+  vertically to the opposite side (or top for \ttx c alignment).
 
   \begin{center}
   \begin{tikzpicture}[box/.style={draw, minimum width=6em, minimum height=6em},font={\tt\small}]
@@ -995,7 +1038,7 @@ They will only be defined if \TikZ\ is also loaded in the document preamble.
   
 \end{envwithcontents}
 \begin{environment}{{layers<>}
-    \oarg{parameter spec}\marg{code}\opt{\ttx{[<}\meta{default specification}\ttx{>]}}}
+    \oarg{parameter spec}\marg{code}\optsarg{default specification}}
   This is a synonym for |\begin{incrementallayers} ... \end{incrementallayers}|.
 \end{environment}
 
@@ -1006,15 +1049,15 @@ They will only be defined if \TikZ\ is also loaded in the document preamble.
 \section{Incremental alignment environments}\label{sec:align}
 \locsection{Alignment environments}
 
-Standard \LaTeX\ alignment environments including |tabular| and the \ttx{align}
-and \ttx{align*} environments from the \ttx{amsmath} package are not
-ordinarily increment-aware.  The current package introduces a partial fix for
-this, although their are remaining fragilities that may need to be worked
-around.  It is possible to make an increment-aware version of any alignment
-environment using |\CreateIncrementalAlignmentEnvironment| as described below.
-However, a few such environments are defined automatically when |beamincr| is
-loaded and these are described first, thus illustrating the behaviour once an
-increment-aware environment has been created.
+Standard \LaTeX\ alignment environments including \ttx{tabular} and the \ttx{align}
+and \ttx{align*} environments from the \ttx{amsmath} package are not ordinarily
+increment-aware.  The current package introduces a partial fix for this,
+although their are remaining fragilities that may need to be worked around.  It
+is possible to make an increment-aware version of any alignment environment
+using \cmd\CreateIncrementalAlignmentEnvironment\ as described below.  A few such
+environments are defined automatically when \beamincr\ is loaded and these are
+described first, thus illustrating the behaviour once an increment-aware
+environment has been created.
 
 \subsection{Automatically defined incremental alignment environments}\label{sec:align:auto}
 
@@ -1025,30 +1068,31 @@ The following two environments are equivalent:
 % \end{environment}
 % \begin{environment}{{align<>}\opt{\ttx{[<}\meta{spec1}\ttx{>\&<}\meta{spec2}\ttx{>\& ...]}}}
 % \end{environment}
-\begin{environment}{{incrementalalign*}\opt{\ttx{[<}\meta{spec1}\ttx{>\&<}\meta{spec2}\ttx{>\& ...]}}}
+\begin{environment}{{incrementalalign*}\opt{\ttx{[<\meta{spec1}>\&<\meta{spec2}>\&...]}}}
 \end{environment}
-\begin{environment}{{align*<>}\opt{\ttx{[<}\meta{spec1}\ttx{>\&<}\meta{spec2}\ttx{>\& ...]}}}
-  Each pre-processes the input to |align*|, placing an |\action<>{}| command
+\vskip -2ex
+\begin{environment}{{align*<>}\opt{\ttx{[<\meta{spec1}>\&<\meta{spec2}>\&...]}}}
+  Each pre-processes the input to \ttx{align*}, placing an |\action<>{}| command
   around each field, defined as the material appearing between successive |&|,
-  |\\| or end environment tokens.  By default, the first field on a line is called with
-  |\action<+->{}|, and up to 7 remaining ones with |\action<.->{}|.  This has
-  the effect of displaying a full line at a time, unless it has more than 8
-  fields.  The optional argument makes it possible to change this behaviour to
-  |\action<|\opt{\meta{spec1}}|>|, |\action<|\opt{\meta{spec2}}|>|, etc.\ with
-  the sequence of specifications reset to |<|\opt{\meta{spec1}}|>| at the
-  beginning of every line. If there are fewer specifications in the default than
-  fields on a single line, then the sequence is repeated.  The default
+  |\\| or end environment tokens.  By default, the first field on a line is
+  called with |\action<+->{}|, and up to 7 remaining ones with |\action<.->{}|.
+  This has the effect of displaying a full line at a time, unless it has more
+  than 8 fields.  The optional argument makes it possible to change this
+  behaviour to \ttc{\action<\ometa{spec1}>}, \ttc{\action<\ometa{spec2}>},
+  etc.\ with the sequence of specifications reset to \ttx{<\ometa{spec1}>} at
+  the beginning of every line. If there are fewer specifications in the default
+  than fields on a single line, then the sequence is repeated.  The default
   specification values can be changed by calling
-  |\setincrementalenvspec{align*}{<new defaults>}| or similar.
+  \cmd\setincrementalenvspec\ttx{\{align*\}\{<\meta{new default}>\}} or similar.
 
   The default specification for a single field can be overridden by placing a
-  field-specific specification in |<>| at its start.  This means that a
-  leading |<| in the field contents itself must be protected, e.g.\ by preceding
+  field-specific specification in \ttx{<>} at its start.  This means that a
+  leading \ttx< in the field contents itself must be protected, e.g.\ by preceding
   it with |{}|.
 
-  The use of |\action| means that beamer will interpret both standard
-  |action@|\meta{increment} actions and implicit ones such as |!|-prefixed
-  increment resets, |=| label assignments or |~|\meta{range} default
+  The use of \ttc\action\ means that \beamer\ will interpret both standard
+  \ttx{action@\meta{increment}} actions and implicit ones such as \ttx!-prefixed
+  increment resets, \ttx= label assignments or |~|\meta{range} default
   specification.
 \example
 \begin{verbatim}
@@ -1061,11 +1105,11 @@ The following two environments are equivalent:
     
     The pre-processor is not able to distinguish between the |&| alignment
     characters that apply to the containing environment and any that appear
-    within enclosed environments, such as |array|.  Thus, any such environments
-    must be protected.  The simplest approach is just to add extra braces to
-    group the enclose environment at a lower level.  Alternatively, the
-    environment can be defined within a token register or a protected macro.  It
-    is still possible to use increments within the environments: these are
+    within enclosed environments, such as \ttx{array}.  Thus, any such
+    environments must be protected.  The simplest approach is just to add extra
+    braces to group the enclose environment at a lower level.  Alternatively,
+    the environment can be defined within a token register or a protected macro.
+    It is still possible to use increments within the environments: these are
     processed sequentially with those in the containing |align| environment,
     respecting increment labels, resets etc.
 
@@ -1078,6 +1122,12 @@ The following two environments are equivalent:
     & \text{is \only<+->{not }singular}
   \end{align<>}
 
+  % using \protected
+  \protected\def\mymatrix{\begin{pmatrix} 1 & 2 \\ \alt<+->{3}{2} & 4 \\ \end{pmatrix}}
+  \begin{align<>}
+    \incrlabel{mat}\mymatrix \resetincr[/mat/]& \text{is \only<+->{not }singular}
+  \end{align<>}
+
   % using token registers
   \newtoks\mymatrix
   \mymatrix={\begin{pmatrix} 1 & 2 \\ \alt<+->{3}{2} & 4 \\ \end{pmatrix}}
@@ -1085,45 +1135,47 @@ The following two environments are equivalent:
     \incrlabel{mat}\the\mymatrix \resetincr[/mat/]& \text{is \only<+->{not }singular}
   \end{align<>}
 
-  % using \protected
-  \protected\def\mymatrix{\begin{pmatrix} 1 & 2 \\ \alt<+->{3}{2} & 4 \\ \end{pmatrix}}
-  \begin{align<>}
-    \incrlabel{mat}\mymatrix \resetincr[/mat/]& \text{is \only<+->{not }singular}
-  \end{align<>}
-
 \end{verbatim}
-    It may be wise to put any |\newtoks| declaration outside the frame so as not
+    It may be wise to put any \ttc\newtoks\ declaration outside the frame so as not
     to consume more of \TeX's resources than needed.  
 
-    |\intertext| lines must be terminated with |\\|.  By default they will be
+    \ttc\intertext\ lines must be terminated with |\\|.  By default they will be
     grouped within the action call of the last field of the preceding line.
     This behaviour can be changed by inserting a |\\| between that field and the
-    |\intertext|.  By default, both |\\|s will add extra vertical space (and an
+    \ttc\intertext.  By default, both |\\|s will add extra vertical space (and an
     equation number in non-starred variants).  These can be avoided by using
     a form like |\nonumber\\[-3ex]| instead.
 
-    The |amsmath| |\tag| command is processed in such a way that it cannot
-    easily be made overlay aware.  Any |\tag|s will appear on any slides where
-    the overall environment is uncovered, even if no fields have appeared.
-    However, the alternative |\eqtag| can be used.  See \cref{sec:align:eqnum}.
+    The \ttx{amsmath} \ttc\tag\ command is processed in such a way that it
+    cannot easily be made overlay aware.  Any \ttc\tag s will appear on any slides
+    where the overall environment is uncovered, even if no fields have appeared.
+    However, an alternative \cmd\eqtag\ is defined.  See \cref{sec:align:eqnum}.
     
 \end{environment}
 %
-The incremental forms |incrementalgather*| and |gather*<>| are also created when
-|beamincr| is loaded.  Although these contain only one field per line, automatic
-access to \beamer\ and |beamincr| actions as these lines are processed can be
-useful.  By default, they uncover equations a line at a time (using |<+->|).
-
-\begin{environment}{{incrementaltabular}\oarg{pos}\marg{cols}\opt{\ttx{[<}\meta{spec1}\ttx{>\&<}\meta{spec2}\ttx{>\& ...]}}}
+\begin{environment}{{incrementalgather*}\optsarg{default spec}}
 \end{environment}
-\begin{environment}{{tabular<>}\oarg{pos}\marg{cols}\opt{\ttx{[<}\meta{spec1}\ttx{>\&<}\meta{spec2}\ttx{>\& ...]}}}
-  These provide increment-aware versions of the standard \LaTeX\ |tabular|
+\vskip -2ex
+\begin{environment}{{gather*<>}\optsarg{default spec}}
+These incremental forms are also created when \beamincr\ is loaded, with similar
+behaviour to the incremental \ttx{align*} environments described above.
+Although these contain only one field per line, automatic access to \beamer\ and
+\beamincr\ actions as these lines are processed can be useful.  By default, they
+uncover equations a line at a time (using \ttx{<+->}).
+\end{environment}
+
+
+\begin{environment}{{incrementaltabular}\oarg{pos}\marg{cols}\opt{\tt[<\meta{spec1}>\&<\meta{spec2}>\&...]}}
+\end{environment}
+\vskip -2ex
+\begin{environment}{{tabular<>}\oarg{pos}\marg{cols}\opt{\tt[<\meta{spec1}>\&<\meta{spec2}>\&...]}}
+  These provide increment-aware versions of the standard \LaTeX\ \ttx{tabular}
   environment.  By default, the entire table is uncovered on the current
-  increment (using |<.->|), but this behaviour can be altered by changing the
-  default specification when called, or by using |\setincrementalenvspec| as
-  described below.  It may also be desirable to uncover entries
-  column-by-column.  This effect can be achieved using increment labels.
-  \example
+  increment (using \ttx{<.->}), but this behaviour can be altered by changing
+  the default specification when called, or by using
+  \cmd\setincrementalenvspec\ as described below.  It may also be desirable to
+  uncover entries column-by-column.  This effect can be achieved using increment
+  labels.  \example
 \begin{verbatim}
 \begin{tabular<>}{cccc}[</col1-/>&</col2-/>&</col3-/>&</col4-/>]
   <=(1)>/col1/\bf fruit & <=(2)>/col2/\bf colour  
@@ -1136,10 +1188,11 @@ useful.  By default, they uncover equations a line at a time (using |<+->|).
 \end{verbatim}
 \end{environment}
 
-\begin{environment}{{incrementaltabular*}\oarg{pos}\marg{width}\marg{cols}\opt{\ttx{[<}\meta{spec1}\ttx{>\&<}\meta{spec2}\ttx{>\& ...]}}}
+\begin{environment}{{incrementaltabular*}\oarg{pos}\marg{width}\marg{cols}\opt{\tt[<\meta{spec1}>\&<\meta{spec2}>\& ...]}}
 \end{environment}
-\begin{environment}{{tabular*<>}\oarg{pos}\marg{width}\marg{cols}\opt{\ttx{[<}\meta{spec1}\ttx{>\&<}\meta{spec2}\ttx{>\& ...]}}}
-  These forms add the \meta{width} argument of \LaTeX's |tabular*| environment.
+\vskip -2ex
+\begin{environment}{{tabular*<>}\oarg{pos}\marg{width}\marg{cols}\opt{\tt[<\meta{spec1}>\&<\meta{spec2}>\& ...]}}
+  These forms add the \meta{width} argument of \LaTeX's \ttx{tabular*} environment.
 \end{environment}
 
 \subsection{Creating new incremental alignment environments}\label{sec:align:new}
@@ -1157,11 +1210,11 @@ useful.  By default, they uncover equations a line at a time (using |<+->|).
   numbers of optional and required arguments the base environment expects.  If
   \meta{Nopts} is omitted it is taken to be 0.  \meta{Nreqs} must be specified,
   but can be 0.  If the \meta{default specification} is omitted it is set to
-  |<.->|, thus displaying the environment contents at the prevailing increment
+  \ttx{<.->}, thus displaying the environment contents at the prevailing increment
   number in the frame.
 
   The new environment can be accessed using either of the names
-  |incremental|\meta{name} or \meta{name}|<>|.
+  \ttx{incremental\meta{name}} or \ttx{\meta{name}<>}.
 \end{command}
 
 \subsection{Manipulating default behaviour}\label{sec:align:defaults}
@@ -1178,8 +1231,10 @@ useful.  By default, they uncover equations a line at a time (using |<+->|).
 \end{align*}
 \end{verbatim}
   The specified \meta{name} must match the \emph{name} of the base environment
-  (i.e. the first argument to |\CreateIncrementalAlignmentEnvironment|), whether
+  (i.e., the first argument to \cmd\CreateIncrementalAlignmentEnvironment), whether
   or not this is the same as its base.
+  %
+\example
 \begin{verbatim}
 \CreateIncrementalAlignmentEnvironment{foo}{0}[<.->][bar]
 \begin{foo}
@@ -1221,22 +1276,22 @@ useful.  By default, they uncover equations a line at a time (using |<+->|).
 
 \subsection{Equation numbering}\label{sec:align:eqnum}
 
-Unfortunately, the |amsmath| |\tag| command, used for equation numbering, is
+Unfortunately, the \ttx{amsmath} \ttc\tag\ command, used for equation numbering, is
 processed in such a way that it cannot easily be made overlay aware.  Any
-|\tag|s will appear on any slides where the overall environment is uncovered,
+\ttc\tag{}s will appear on any slides where the overall environment is uncovered,
 even if no fields have appeared.  This is also the case with automatic
 numbering.  Thus if defined using
 \begin{verbatim}
   \CreateIncrementalAlignmentEnvironment{gather}{0}[<+->]
 \end{verbatim}
-the |gather<>| environment will also generate all equation numbers whenever the
-environment as a whole is uncovered, regardless of the status of the relevant
-fields.  In principle, this behaviour could be partially addressed using a
-technique discussed in the \beamer\ manual Howtos, but this requires some
-hackery.
+the \ttx{gather<>} environment will also generate all equation numbers whenever
+the environment as a whole is uncovered, regardless of the status of the
+relevant fields.  In principle, this behaviour could be partially addressed
+using a technique discussed in the \beamer\ manual Howtos, but this requires
+some additional hackery.
 
-Instead, beamincr provides an increment-aware version of |\tag| and of automatic
-equation numbering.
+Instead, beamincr provides an increment-aware version of \ttc\tag\ and of
+automatic equation numbering.
 \begin{command}{\eqtag\sarg{overlay spec}\marg{tag}}%
   {place \meta{tag} on slides that match \meta{overlay spec}}
   Place \meta{tag} on slides that match \meta{overlay spec}.  
@@ -1244,13 +1299,13 @@ equation numbering.
 \begin{command}{\eqnum\sarg{overlay spec}}
   {place current equation number on slides that match \meta{overlay spec}, and increment}
 %
-  Place the current equation number (as |\theequation|) on slides that match
+  Place the current equation number (as \ttc\theequation) on slides that match
   \meta{overlay spec}, and then increment it.
 \end{command}
 
 The second form can be used as an action.
 \begin{commandalt}[<eqnum@>]{{<eqnum@}\meta{range}\contcmd{>}}{}
-  Place the current equation number (as |\theequation|) on slides in
+  Place the current equation number (as \ttc\theequation) on slides in
   \meta{range}, and then increment it.
   \example
 \begin{verbatim}
@@ -1274,9 +1329,9 @@ Such environments are not created automatically, as the user should be aware of
 two traps.  First, if a default specification is given to |\begin{gather<>}|,
 the environment will revert to unnumbered unless the appropriate \ttx{eqnum}
 action or commands are provided.  Second, a call to
-|\usenonincrementalenv{gather}| will make |gather| a synonym for |gather*|.  At
-this point, there would be no easy way to restore |gather| to its original
-behaviour.  You have been warned.
+\cmd\usenonincrementalenv|{gather}| will make \ttx{gather} a synonym for
+\ttx{gather*}.  At this point, there would be no easy way to restore \ttx{gather} to
+its original behaviour.  You have been warned.
 
 
 \section{Directing attention}\label{sec:attention}
@@ -1309,46 +1364,48 @@ behaviour.  You have been warned.
 \begin{command}{\point\osarg{overlay spec}\marg{contents}}%
   {insert pointer as appropriate, and activate \ttc{\point*} commands in \meta{range}}
   In normal text, insert a pointer before \meta{contents} on the specified
-  slides.  If \meta{contents} includes any |\point*| commands, pointers are
+  slides.  If \meta{contents} includes any \cmd{\point*} commands, pointers are
   inserted at the locations of these commands at the same time.
 
-  If called within a \TikZ\ picture, the |\point| command does not insert a
+  If called within a \TikZ\ picture, the \ttc\point\ command does not insert a
   pointer itself.  Instead, any pointer defined by the \ttx{pointer} option
   to any nodes in \meta{contents} is activated.  See the description of
   \ttx{pointer} below.
 \end{command}
 
 \begin{commandalt}[<point@>]{{<point@}\meta{range}\contcmd>}{}
-  The action form of |\point| can be used in all contexts where an action
+  The action form of \cmd\point\ can be used in all contexts where an action
   specification is valid.  Its behaviour around normal text or \TikZ\ code is as
-  above.  In \ttx{itemize} environments it replaces the default item label
-  with the pointer\footnote{Although if the \ttx{itemize} is nested within an
-    \ttx{enumerate}, it inherits the \ttx{enumerate} behaviour.}.  In
-  \ttx{enumerate} environments it prepends the pointer to the default label.
-  In other list environments, or when the label is set explicitly as an optional
-  argument to |\item|, it has no direct effect.  However any |\point*| commands
-  in the item label or text are activated.
+  above.  In \ttx{itemize} environments it replaces the default item label with
+  the pointer\footnote{Although if the \ttx{itemize} is nested within an
+  \ttx{enumerate}, it inherits the \ttx{enumerate} behaviour.}.  In
+  \ttx{enumerate} environments it prepends the pointer to the default label.  In
+  other list environments, or when the label is set explicitly as an optional
+  argument to \ttc\item, it has no direct effect.  However any \cmd{\point*}
+  commands in the item label or text are activated.
 \end{commandalt}
 
 \begin{commandalt}[<pointers@>]{{<pointers@}\meta{range}\contcmd>}{}
-  This action activates |\point*| commands in the argument contents, but does
-  not insert a pointer.
+  This action activates \cmd{\point*} commands in the argument contents, but
+  does not insert a pointer.
 \end{commandalt}
 
 \begin{command}{{\point*}\oarg{options}\opt{\marg{contents}}}
-  {insert a pointer when activated (possibly using a \TikZ\ node around \ometa{contents})}
-  If the command is not followed by a |[| or |{| character, insert a pointer when an
-      enclosing |\point| command or action is active.
+  {insert a pointer when activated (possibly using a \TikZ\ node around
+    \ometa{contents})}
+  %
+  If the command is not followed by a |[| or |{| character, insert a pointer
+      when an enclosing \cmd\point\ command or action is active.
 
   If followed by an argument in |[]| or |{}|, and if \TikZ\ is loaded, call
-  |\pointtonode| as described below.  If \TikZ\ is \emph{not} loaded a normal
+  \cmd\pointtonode\ as described below.  If \TikZ\ is \emph{not} loaded a normal
   pointer is inserted as in the no-argument form, any options are ignored, and
   the contents is copied to the output.
 \end{command}
 
 \begin{commandalt}[pointer (tikz option)]{{pointer}\opt{=}\oarg{pointer node options}\opt{\meta{angle}}}{}
   This is a \TikZ\ option that can be passed to a \ttx{node} to insert a
-  pointer drawn towards the node whenever an enclosing |\point| command or
+  pointer drawn towards the node whenever an enclosing \cmd\point\ command or
   action is active.  If an \meta{angle} is specified, the pointer is drawn
   towards the corresponding point on the node boundary; this can be specified as
   a numerical angle or a direction like \ttx{north}.  The default angle is
@@ -1386,21 +1443,24 @@ behaviour.  You have been warned.
 \end{verbatim}
 The spacing adjustments ensure that the contents in the node are printed in
 alignment with the surrounding text, and that pointers to an empty node appear
-at a similar height to those inserted by |\point| or |\point*|.  The
+at a similar height to those inserted by \cmd\point\ or \cmd{\point*}.  The
 availability of \meta{{\tt pointer} options} provides flexibility in the pointer
 placement.
 
-If \TikZ\ is not loaded, this is the equivalent of |\point*|\marg{contents}, ignoring any
-options given.
+If \TikZ\ is not loaded, this is the equivalent of \cmd{\point*}\marg{contents},
+ignoring any options given.
 \end{command}
 
 \begin{command}{\usepointer\oarg{inactive glyph}\marg{pointer glyph}}
   {set the pointer glyph}
+  %
   Use \meta{pointer glyph} for subsequent pointers in the current group.  If the
   optional argument is absent, then the pointer is replaced by a phantom of the
-  same size when inactive (the size only matters if |\useuncoverpointer| is
+  same size when inactive (the size only matters if \cmd\useuncoverpointer\ is
   active).  If it is given, then inactive pointers are replaced by
-  \meta{inactive glyph} (which may be empty).  \example
+  \meta{inactive glyph} (which may be empty).
+  %
+  \example
 \begin{verbatim}
 \usepointer{\raisebox{0.3ex}{\alert{$\blacktriangleright$}}} % the default
 \usepointer{\raisebox{-0.4ex}{\alert{\HandRight}}} % requires \usepackage{bbding}
@@ -1430,7 +1490,7 @@ mechanism, but that's a project for another day.
   Set subsequent pointers and any inactive glyph in the current group as normal
   text, taking up space on the page.  If no inactive glyph has been specified,
   the effect is to leave a blank space when the pointer is inactive, much like
-  the effect of the |\uncover| or |\onslide| commands.  If the inactive glyph is
+  the effect of the \ttc\uncover\ or \ttc\onslide\ commands.  If the inactive glyph is
   set to the empty string, there is no blank space, but surrounding text is
   rearranged to make room for the pointer when it becomes active.
 
@@ -1477,7 +1537,7 @@ Unfortunately,  the natural code
 \end{frame}
 \handoutframe<1,/halfway/,/done/>{twolists}
 \end{verbatim}
-fails, because the |<handout:0>| spec stops the increment labels from being
+fails, because the \ttx{<handout:0>} spec stops the increment labels from being
 defined.  If running a recent \LaTeX\ compiler (post 2021) the command
 \ttc{\framescanonly<handout>} described below provides a workaround.  \example
 \begin{verbatim}
@@ -1515,7 +1575,7 @@ defined.  If running a recent \LaTeX\ compiler (post 2021) the command
 
 \begin{command}{\allowframescanonly\oarg{flag}}{allow frames to be only scanned}
   Disable (with \meta{flag} = 0) or enable (with \meta{flag} > 0 or omitted) the
-  effect of |\framescanonly|.
+  effect of \cmd\framescanonly.
 \end{command}
 
 
@@ -1530,53 +1590,53 @@ is only likely to be of interest to users who wish to extend the approach.
 \subsection{Pauses, increments and the \ttx{beamerpauses} counter}\label{sec:internals:beamerpauses}
 \locsection{{\sc Beamer} pause commands}
 
-Both |\pause| and incremental overlay specifications access the same underlying
-counter called |beamerpauses|, but they use them in different ways.
+Both \ttc\pause\ and incremental overlay specifications access the same underlying
+counter called \ttx{beamerpauses}, but they use them in different ways.
 
 \begin{command}{\pause}{}
-  increments |beamerpauses| and then sets subsequent material on the slide
+  increments \ttx{beamerpauses} and then sets subsequent material on the slide
   given by the incremented |\value{beamerpauses}|. 
 \end{command}
 
 \begin{command}{\onslide\ttx{<+->}}{}
-  increments |beamerpauses| but then sets subsequent (or argument) material on
-  the slide corresponding to the \emph{previous} value of |beamerpauses|.
+  increments \ttx{beamerpauses} but then sets subsequent (or argument) material on
+  the slide corresponding to the \emph{previous} value of \ttx{beamerpauses}.
 \end{command}
 
 \begin{command}{\onslide\ttx{<.->}}{}
-  leaves |beamerpauses| alone, but sets subsequent (or argument) material on the
+  leaves \ttx{beamerpauses} alone, but sets subsequent (or argument) material on the
   slide given by |\value{beamerpauses}-1|, unless |\value{beamerpauses}=1| in
   which case it puts subsequent material on slide 1.
 \end{command}
 %
-This conflict in interpretation of the |beamerpauses| counter can cause
+This conflict in interpretation of the \ttx{beamerpauses} counter can cause
 unintuitive effects.  The incremental specfication model is far more flexible
 and powerful, and so the commands of this package can all be interpreted in
 terms of an \emph{increment number} which ordinarily equals
 |max(\value{beamerpauses}-1,1)|.  In fact, internally they all use the
-|beamerpauses| counter with this offset.  Thus, when commands like |\resetincr|
-set the increment value, they set |beamerpauses| to the increment + 1.  This
-value then behaves sensibly with |<+>| etc.\ specifications, but not with
-|\pause|.
+\ttx{beamerpauses} counter with this offset.  Thus, when commands like \cmd\resetincr\
+set the increment value, they set \ttx{beamerpauses} to the increment + 1.  This
+value then behaves sensibly with \ttx{<+>} etc.\ specifications, but not with
+\ttc\pause.
 
 An exception is when the current increment is set to 0, either explicitly or by
 using an advanced (or otherwise undefined) increment reference.  In this case
-|beamerpauses| is also set to 0, not 1.  This is because |beamincr| references
+\ttx{beamerpauses} is also set to 0, not 1.  This is because \beamincr\ references
 use the 0 value to detect the undefined reference, and so suppress offsets and
 ranges as described in \cref{sec:actions:advanced}.  However, subsequent uses of
-\beamer's |<+>| specification will increment |beamerpauses|, potentially placing
+\beamer's \ttx{<+>} specification will increment \ttx{beamerpauses}, potentially placing
 text on earlier slides than intended.  This behaviour can be avoided (at the
-expense of more typing) by using |<!/.(1)/>| instead.
+expense of more typing) by using \ttx{<!/.(1)/>} instead.
 
 
 \subsection{Overlay specification parsing routines}\label{sec:internals:parsing}
 \locsection{Internal parsing commands}
 
-The |beamincr| overlay and action specification extensions work by injecting
+The \beamincr\ overlay and action specification extensions work by injecting
 various parsing routines into the core \beamer\ parser (called
 |\beamer@masterdecode|), before calling the original function.  These parsers
 are also available as user commands, and may be helpful for debugging (though
-see also |\beamincrdebug| below).
+see also \cmd\beamincrdebug\ below).
 
 \begin{command}{\parseincludedefaultspec \marg{overlay spec}}{todo}
   Replace any <|~|>fields in \meta{overlay spec} with the current default
@@ -1608,10 +1668,10 @@ As described above, increment control is achieved by reading or setting the
 |max(\value{beamerpauses}-1,1)|, so as to consistently match the slide numbers
 on which increment-assigned material appears.  Many commands also read and
 modify \beamer\ internal macros used as variables, notably
-\ttc\beamer@defaultospec\ (the current default overlay specification) and
-\ttc\beamer@againname\ (the label of the current frame, used to identify it in
-calls to \cmd\againframe).  In particular, \ttc\beamer@againname\ is
-incorporated into the internal name associated with \beamincr\ labels.
+|\beamer@defaultospec| (the current default overlay specification) and
+|\beamer@againname| (the label of the current frame, used to identify it in
+calls to \cmd\againframe).  In particular, |\beamer@againname| is incorporated
+into the internal name associated with \beamincr\ labels.
 
 Extensions to the overlay and action specification syntax require modification
 to the \beamer\ parsing routines, to inject the parsing routines described in
@@ -1653,7 +1713,7 @@ after resetting the current mode to \ttx{beamer}.
 \begin{command}{\beamincrdebug \marg{flag}}{control generation of debugging information}
   Turn on (\meta{flag} > 0) or off (\meta{flag} = 0) debugging mode.  When on,
   compilation generates messages in the terminal output and log file describing
-  the rewriting actions that |beamincr| performs.
+  the rewriting actions that \beamincr\ performs.
 \end{command}
 
 
