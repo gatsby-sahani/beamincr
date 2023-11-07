@@ -35,6 +35,9 @@
 }
 \beamincrdebug0
 
+\def\frame@nameornumber{\x@\ifblank\x@{\beamer@againname}{\insertframenumber}{\beamer@againname}}
+
+
 %% 
 %% allow references to future labels
 %%
@@ -127,20 +130,20 @@
   \@ifnextchar<{\incrlabel@angle}{\incrlabel@normal}%
 }
 \newcommand\incrlabel@normal[1]{%
-  \incrlabel@do{\beamer@againname}{#1}{\@currentincr}%
+  \incrlabel@do{#1}{\@currentincr}%
 }
 \def\incrlabel@angle<#1>#2{%
-  \incrlabel@do{\beamer@againname}{#2}{\parseincrspec{#1}}%
+  \incrlabel@do{#2}{\parseincrspec{#1}}%
 }
-\def\incrlabel@do#1#2#3{%
-  \ifstrequal{=}{#2}{% \incrlabel[<>]=/foo/
-    \@incrlabel@equals@futureget<#3>%
-  }{\ifstrequal{/}{#2}{% \incrlabel[<>]/foo/
-      \@incrlabel@equals@futureget<#3>/%
-    }\iffirst({#2}{% \incrlabel[<>]{(offset)foo}
-      \incrlabel@do@{#1}#2X{#3}%
+\def\incrlabel@do#1#2{%
+  \ifstrequal{=}{#1}{% \incrlabel[<>]=/foo/
+    \@incrlabel@equals@futureget<#2>%
+  }{\ifstrequal{/}{#1}{% \incrlabel[<>]/foo/
+      \@incrlabel@equals@futureget<#2>/%
+    }\iffirst({#1}{% \incrlabel[<>]{(offset)foo}
+      \incrlabel@do@#1X{#2}%
     }{% \incrlabel[<>]{foo}
-      \incrlabel@do@{#1}(0)#2X{#3}%
+      \incrlabel@do@(0)#1X{#2}%
     }%
   }%
 }
@@ -151,9 +154,65 @@
       #2%
     }%
 }
-\def\incrlabel@do@#1(#2)#3X#4{%
-  \x@\x@\x@\xdef\x@\csname beamincr@#1@#3\endcsname{\the\numexpr #2+#4\relax}%
+
+\def\incrlabel@do@(#1)#2X#3{%
+  \csxdef{beamincr@\frame@nameornumber @#2}{\the\numexpr #1+#3\relax}%
 }
+
+
+%% \incrlabelcode[frame]{label}{code} - execute code when label evaluated
+\newcommand\incrlabelcode[3][\frame@nameornumber]{%
+  \csgdef{beamincr@#1@#2}{#3}%
+}
+
+%% 
+%% built-in labels
+%%
+
+%% . -> current increment
+\incrlabelcode[global]{.}{\@currentincr}
+
+%% ! -> last reset increment
+% (protect to delay expansion of reset counter until evaluation)
+% use local offset processing -- else \@@incrref@offset would force expansion
+\protected\def\beamincr@lastreset#1{%
+  % At one point beamer \futurelets \next=\beamincr@lastreset, calls \ifcat\next a, which evaluates
+  % \beamincr@lastreset{a}, which fails as a is not a number.  Test specifically for this case.
+  \if a#1 0a\else
+    \ifnumequal{\c@beamincr@lastreset}{0}% ignore offset if reset to 0
+      {0}{\the\numexpr #1+\c@beamincr@lastreset\relax}%
+  \fi%
+}
+\csdef{beamincr@global@!@offsetcode}{\beamincr@lastreset}
+
+%% various overlay counting labels
+\AtBeginEnvironment{beamer@framepauses}{%
+  %% @ -> current overlay number
+  \incrlabel<\beamer@overlaynumber>{@}%
+  %% ^ -> first overlay used
+  \ifcsdef{beamincr@\frame@nameornumber @^}{%
+    \edef\current@first{\csuse{beamincr@\frame@nameornumber @^}}%
+    \ifnumless{\beamer@overlaynumber}{\current@first}{\incrlabel<\beamer@overlaynumber>{^}}{}%
+  }{\incrlabel<\beamer@overlaynumber>{^}}%
+  %% $* -> last overlay used so far
+  \edef\current@end{\csuse{beamincr@\frame@nameornumber @$*}}%
+  \ifnumgreater{\beamer@overlaynumber}{0\current@end}{\incrlabel<\beamer@overlaynumber>{$*}}{}%
+  %% $ -> last overlay number -- initialised from aux but increment if exceeded
+  \edef\current@end{\csuse{beamincr@\frame@nameornumber @$}}%
+  \ifnumgreater{\beamer@overlaynumber}{0\current@end}{\incrlabel<\beamer@overlaynumber>{$}}{}%
+  %% add frame to list of framenames (to write $ defns to aux at end)
+  \xifinlist{\frame@nameornumber}{\beamincr@framelist}{}{\listxadd{\beamincr@framelist}{\frame@nameornumber}}% 
+}
+
+%% write out the $ defns for all frames to aux
+\def\beamincr@framelist{}% initialise list
+\AtEndDocument{%
+  \renewcommand*\do[1]{%
+    % use $* (not $) otherwise $ would never be reduced
+    \immediate\write\@auxout{\string\csgdef{beamincr@#1@$}{\csuse{beamincr@#1@$*}}}%
+  }\dolistloop{\beamincr@framelist}%
+}
+
 
 
 
@@ -237,40 +296,29 @@
 % parens and knows to ignore it.
 
 
-\newcommand\incrref[2][\beamer@againname]{%
+\newcommand\incrref[2][\frame@nameornumber]{%
   \@incrref[#1]#2()%
 }
 \def\@incrref[#1]#2(#3){%
   \@ifempty{#3}%
-           {\@@incrref[#1]#2(0)}%
-           {\@@incrref[#1]#2(#3)\@gobbleparens}%
+   {\@@incrref[#1]#2(0)}%
+   {\@@incrref[#1]#2(#3)\@gobbleparens}%
 }
 \def\@gobbleparens#1(){}
 
-% avoid expansion of ! refs until the bitter end using \protected\def
-\protected\def\beamincr@lastreset#1{%
-  % At one point in its internals beamer \futurelets \next=\beamincr@lastresest, and calls
-  % \ifcat\next a, which evaluates \beamincr@lastresest{a}, which fails as `a is not a number.  Test
-  % specifically for this case.
-  \if a#1 0a\else
-    \ifnumequal{\c@beamincr@lastreset}{0}% ignore offset if reset to 0
-      {0}{\the\numexpr #1+\c@beamincr@lastreset\relax}%
-  \fi
-}
 \def\@@incrref[#1]#2(#3){%
-  \if.#2% this breaks if the incrlabel is .foo.  fixes all seem to require additional packages
-    \@@incrref@offset{\@currentincr}{#3}%
-  % \number \numexpr \@currentincr + #3\relax%
-  \else\if!#2%
-   \beamincr@lastreset{#3}%
-  \else
-    \@ifundefined{beamincr@#1@#2}%
-      {\if@allowundefincrref\x@\@firstoftwo\else\x@\@secondoftwo\fi
-          {\@@incrref@offset{0}{0}}%
+  \ifcsdef{beamincr@#1@#2}% check for frame-local label defn
+    {\x@\@@incrref@offset\x@{\csname beamincr@#1@#2\endcsname}{#3}}%
+    {\ifcsdef{beamincr@global@#2}% then for global defn (usually code)
+      {\@@incrref@offset{\csuse{beamincr@global@#2}}{#3}}%
+      {\ifcsdef{beamincr@global@#2@offsetcode}% then for offset processing code
+        {\csuse{beamincr@global@#2@offsetcode}{#3}}%
+        {\if@allowundefincrref\x@\@firstoftwo\else\x@\@secondoftwo\fi
+          {0}%
           {\PackageError{beamincr}{No label #2 in frame #1}{}}%
-      }%}%
-      {\x@\@@incrref@offset\x@{\csname beamincr@#1@#2\endcsname}{#3}}%
-  \fi\fi%
+        }%
+      }%
+    }%
 }
 
 % no offset on 0 increments
@@ -414,14 +462,14 @@
 % foo- -> Xfoo--X- ->#2=foo #3={} remaining X-
 \def\@parseincrspec@handledash#1X#2-#3-{%
   \@ifempty{#2}{% leading -, label in #3, gobble X-
-    \@zer@orempty{\@incrref[\beamer@againname]#3#1}-\@incrref[\beamer@againname]#3#1%
+    \@zer@orempty{\@incrref[\frame@nameornumber]#3#1}-\@incrref[\frame@nameornumber]#3#1%
     \@gobblexdash%
   }{%
     \@ifempty{#3}{% trailing -, label in #3, gobble X-
-      \@incrref[\beamer@againname]#2#1-\@zer@orempty{\@incrref[\beamer@againname]#2#1}%
+      \@incrref[\frame@nameornumber]#2#1-\@zer@orempty{\@incrref[\frame@nameornumber]#2#1}%
       \@gobblexdash%
     }{% no -, label in #2
-      \@incrref[\beamer@againname]#2#1}% just resolve this ref
+      \@incrref[\frame@nameornumber]#2#1}% just resolve this ref
     }%
 }
 \def\@gobblexdash#1X-{}
