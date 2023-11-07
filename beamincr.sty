@@ -794,9 +794,18 @@
 
 %% incremental[do] internals
 
+% for /next +/ label -- recurse to find first /next n/ > currentincr
+\def\@nextplus#1{%
+  \ifcsdef{beamincr@\frame@nameornumber @next #1}{%
+    \ifnumless{\@currentincr}{\csuse{beamincr@\frame@nameornumber @next #1}}%
+     {#1}{\@nextplus{\the\numexpr #1+1\relax}}%
+  }{XX}%
+}
+
 % process the body of environment
 \long\def\@incremental#1{%
   \setcounter{next}{0}%
+  \incrlabelcode{next +}{\number\numexpr0\csuse{beamincr@\frame@nameornumber @next \@nextplus{0}}\relax}% create /next +/ label
   \@incremental@optspec#1\nextX% ungroup and terminate input
 }
 
@@ -810,8 +819,8 @@
 % #2: remaining fields including terminal \next
 \long\def\@incremental@firstfield#1\next#2X{%
   \ifwhitespace{#1}%
-    {\stepcounter{next}\@incremental@next@chkstar#2X}        % skip if nothing before first \next
     {\@incremental@next@spec@nocmd#1\next#2X}%
+    {\incrlabel{next \thenext}\stepcounter{next}\@incremental@next@chkstar#2X}% skip if nothing before first \next
 }
 
 % check for starred \next => no command
@@ -829,7 +838,7 @@
 % #2: field contents
 % #3: remaining fields
 \long\def\@incremental@do@next@nocmd<#1>#2\next#3X{%
-    \action<#1>{#2}%
+    \action<#1>{\incrlabel{next \thenext}#2}%
     \@ifempty{#3}%
       {}% done
       {\stepcounter{next}\@incremental@next@chkstar#3X}%
@@ -845,7 +854,7 @@
 % #2: field contents
 % #3: remaining fields
 \long\def\@incremental@do@next<#1>#2\next#3X{%
-    \action<#1>{\incremental@do#2\@endnext}%
+    \action<#1>{\incrlabel{next \thenext}\incremental@do#2\@endnext}%
     \@ifempty{#3}%
       {}% done
       {\stepcounter{next}\@incremental@next@chkstar#3X}%
