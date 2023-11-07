@@ -794,6 +794,10 @@
 
 %% incremental[do] internals
 
+% default do commands do nothing
+\let\incremental@do\relax
+\let\incremental@do@prenext\relax
+
 % for /next +/ label -- recurse to find first /next n/ > currentincr
 \def\@nextplus#1{%
   \ifcsdef{beamincr@\frame@nameornumber @next #1}{%
@@ -810,56 +814,44 @@
 }
 
 % environment option default spec
-\newcommand\@incremental@optspec[1][\beamer@defaultospec]{%
-  \edef\beamer@defaultospec{#1}% set beamer@defaultospec locally
-  \@incremental@firstfield%
+\newcommand\@incremental@optspec[1][<+->]{% defaults to <+->
+  \edef\beamer@defaultospec{#1}%
+  \@incremental@prenext%
 }
 
 % #1: field to first \next
 % #2: remaining fields including terminal \next
-\long\def\@incremental@firstfield#1\next#2X{%
+\long\def\@incremental@prenext#1\next#2X{%
   \ifwhitespace{#1}%
-    {\@incremental@next@spec@nocmd#1\next#2X}%
     {\incrlabel{next \thenext}\stepcounter{next}\@incremental@next@chkstar#2X}% skip if nothing before first \next
+    {\@incremental@next@spec{\incremental@do@prenext}{<.->}#1\next#2X}% default spec for pre-next field is <.->
 }
 
 % check for starred \next => no command
-\def\@incremental@next@chkstar{%
-  \@ifstar{\@incremental@next@spec@nocmd}{\@incremental@next@spec}%
+\newcommand\@incremental@next@chkstar{%
+  \@ifstar%
+    {\@incremental@next@spec{\relax}{\beamer@defaultospec}}%
+    {\@incremental@next@spec{\incremental@do}{\beamer@defaultospec}}%
 }
 
 % check for overlay spec within the field
-\def\@incremental@next@spec@nocmd{%
+% #1: command
+% #2: default spec (may be a command, thus the \x@s)
+\newcommand\@incremental@next@spec[2]{%
   \@ifnextchar<%input starts with overlay spec char
-    {\@incremental@do@next@nocmd}%
-    {\x@\@incremental@do@next@nocmd\beamer@defaultospec}%
+    {\@incremental@next@do{#1}}%
+    {\x@\@incremental@next@do\x@{\x@#1\x@}#2}%
 }
-% #1: spec
-% #2: field contents
-% #3: remaining fields
-\long\def\@incremental@do@next@nocmd<#1>#2\next#3X{%
-    \action<#1>{\incrlabel{next \thenext}#2}%
-    \@ifempty{#3}%
+% #1: command
+% #2: spec
+% #3: field contents
+% #4: remaining fields
+\long\def\@incremental@next@do#1<#2>#3\next#4X{%
+    \action<#2>{\incrlabel{next \thenext}#1#3\@endnext}%
+    \@ifempty{#4}%
       {}% done
-      {\stepcounter{next}\@incremental@next@chkstar#3X}%
+      {\stepcounter{next}\@incremental@next@chkstar#4X}%
 }
-
-
-\def\@incremental@next@spec{%
-  \@ifnextchar<%input starts with overlay spec char
-    {\@incremental@do@next}%
-    {\x@\@incremental@do@next\beamer@defaultospec}%
-}
-% #1: spec
-% #2: field contents
-% #3: remaining fields
-\long\def\@incremental@do@next<#1>#2\next#3X{%
-    \action<#1>{\incrlabel{next \thenext}\incremental@do#2\@endnext}%
-    \@ifempty{#3}%
-      {}% done
-      {\stepcounter{next}\@incremental@next@chkstar#3X}%
-}
-
 
 
 %% 
