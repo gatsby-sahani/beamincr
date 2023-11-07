@@ -8,6 +8,9 @@
 % Xs in the input.  this means we can't use X as a letter in this file.
 \catcode`X=12
 
+% string form of @
+\newcommand\at{\string @}
+
 % abbreviate \expandafter
 \let\x@=\expandafter
 
@@ -222,8 +225,6 @@
 }
 
 
-
-
 %% \incrref{label} - print the incr number associated with label in the current frame
 %% \incrref[framename]{label} - reference a different frame
 %% \incrref{label(offset)} - add a numerical offset, possibly negative.
@@ -244,6 +245,7 @@
            {\@@incrref[#1]#2(0)}%
            {\@@incrref[#1]#2(#3)\@gobbleparens}%
 }
+\def\@gobbleparens#1(){}
 
 % avoid expansion of ! refs until the bitter end using \protected\def
 \protected\def\beamincr@lastreset#1{%
@@ -270,7 +272,6 @@
       {\x@\@@incrref@offset\x@{\csname beamincr@#1@#2\endcsname}{#3}}%
   \fi\fi%
 }
-\def\@gobbleparens#1(){}
 
 % no offset on 0 increments
 \def\@@incrref@offset#1#2{\ifnumequal{#1}{0}{0}{\number\numexpr #1+#2\relax}}
@@ -468,7 +469,7 @@
 % #3: rest of input to next !
 \def\@@parseresetspec#1#2#3!{%
   #2%put count value on stream
-  \@parseresetspec{#1|resetincr\string @#2}#3!%add new action and parse remainder
+  \@parseresetspec{#1|resetincr\at#2}#3!%add new action and parse remainder
 }
 
 
@@ -503,8 +504,8 @@
   \if=#1% label found
     \@ifempty{#2}% check there's nothing between = and offset
       {\@ifempty{#3}% 
-        {incrlabel@action\string @*}% no offset
-        {incrlabel@action\string @#3}% place offset as number
+        {incrlabel@action\at*}% no offset
+        {incrlabel@action\at#3}% place offset as number
     }{%
       \PackageError{beamincr}{Label action field contains extra text: #2}{}%
     }%
@@ -546,7 +547,7 @@
 \def\@iffirsttilde#1#2X{\ifx~#1\x@\@firstoftwo\else\x@\@secondoftwo\fi}
 \def\@ifsecondempty#1#2X{\@ifempty{#2}}
 \def\@copytotildetilde#1~~{#1}
-\def\@putdefaultspecaction#1#2X{#2|#1defaultspec\string @#2}
+\def\@putdefaultspecaction#1#2X{#2|#1defaultspec\at#2}
 
 %% 
 %% install overlay parsing in beamer commands
@@ -849,7 +850,6 @@
 
 
 
-
 %% Incremental alignment environment internals
 
 % token register to collect the processed toks               
@@ -1015,10 +1015,10 @@
 
 \CreateIncrementalAlignmentEnvironment{align*}{0}[<+->&<.->&<.->&<.->&<.->&<.->&<.->&<.->]
 %\CreateIncrementalAlignmentEnvironment{align}{0}[<+->&<.->&<.->&<.->&<.->&<.->&<.->&<.->]
-%\CreateIncrementalAlignmentEnvironment{align}{0}[<+-|eqnum\string @+->&<.->&<.->&<.->&<.->&<.->&<.->&<.->]
+%\CreateIncrementalAlignmentEnvironment{align}{0}[<+-|eqnum\at+->&<.->&<.->&<.->&<.->&<.->&<.->&<.->]
 \CreateIncrementalAlignmentEnvironment{gather*}{0}[<+->]
 %\CreateIncrementalAlignmentEnvironment{gather}{0}[<+->]
-%\CreateIncrementalAlignmentEnvironment{gather}{0}[<+-|eqnum\string @+->][gather*]
+%\CreateIncrementalAlignmentEnvironment{gather}{0}[<+-|eqnum\at+->][gather*]
 \CreateIncrementalAlignmentEnvironment{tabular}[1]{1}[<.->]
 \CreateIncrementalAlignmentEnvironment{tabular*}[1]{2}[<.->]
 
