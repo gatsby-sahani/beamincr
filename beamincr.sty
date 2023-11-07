@@ -790,9 +790,33 @@
 }{\ignorespacesafterend}
 \@incremental@env@angles{dolongdef}
 
-\newcounter{next}
+\newenvironment{incrementalitemize}{%
+  \def\incremental@do{\incritem@next}%
+  \def\incremental@do@prenext{\incritem@prenext}%
+  \itemize\Collect@Body\@incremental%
+}{\enditemize\ignorespacesafterend}
+\@incremental@env@angles{itemize}
+
+% field processing commands for incrementalitemize
+\def\incritem@setspec[#1]{\def\incritem@spec{#1}}
+\incritem@setspec[<.->&<+->]%
+% multiple \x@s needed because of \newcommand option munging
+\newcommand\incritem@next[1][\incritem@spec]{\x@\x@\x@\incritem@next@#1&&}
+\def\incritem@next@#1&#2&{%
+  \@ifempty{#2}{\incritem@next@@{#1}{\beamer@defaultospec}}{\incritem@next@@{#1}{#2}\@gobbleamp}}
+\def\incritem@next@@#1#2#3\@endnext{%
+  \let\saved@defaultospec\beamer@defaultospec\edef\beamer@defaultospec{#2}%
+  \item#1#3%
+  \let\beamer@defaultospec\saved@defaultospec}
+\def\@gobbleamp#1&{}
+\def\incritem@prenext{% look for itemize default spec
+  \@ifnextchar[{\incritem@setspec}{}%
+}
+
 
 %% incremental[do] internals
+
+\newcounter{next}
 
 % default do commands do nothing
 \let\incremental@do\relax
