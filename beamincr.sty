@@ -8,6 +8,9 @@
 % Xs in the input.  this means we can't use X as a letter in this file.
 \catcode`X=12
 
+% string form of @
+\newcommand\at{\string @}
+
 % abbreviate \expandafter
 \let\x@=\expandafter
 
@@ -31,6 +34,9 @@
     {\gdef\debug@message{\@gobble}}
 }
 \beamincrdebug0
+
+\def\frame@nameornumber{\x@\ifblank\x@{\beamer@againname}{\insertframenumber}{\beamer@againname}}
+
 
 %% 
 %% allow references to future labels
@@ -124,20 +130,20 @@
   \@ifnextchar<{\incrlabel@angle}{\incrlabel@normal}%
 }
 \newcommand\incrlabel@normal[1]{%
-  \incrlabel@do{\beamer@againname}{#1}{\@currentincr}%
+  \incrlabel@do{#1}{\@currentincr}%
 }
 \def\incrlabel@angle<#1>#2{%
-  \incrlabel@do{\beamer@againname}{#2}{\parseincrspec{#1}}%
+  \incrlabel@do{#2}{\parseincrspec{#1}}%
 }
-\def\incrlabel@do#1#2#3{%
-  \ifstrequal{=}{#2}{% \incrlabel[<>]=/foo/
-    \@incrlabel@equals@futureget<#3>%
-  }{\ifstrequal{/}{#2}{% \incrlabel[<>]/foo/
-      \@incrlabel@equals@futureget<#3>/%
-    }\iffirst({#2}{% \incrlabel[<>]{(offset)foo}
-      \incrlabel@do@{#1}#2X{#3}%
+\def\incrlabel@do#1#2{%
+  \ifstrequal{=}{#1}{% \incrlabel[<>]=/foo/
+    \@incrlabel@equals@futureget<#2>%
+  }{\ifstrequal{/}{#1}{% \incrlabel[<>]/foo/
+      \@incrlabel@equals@futureget<#2>/%
+    }\iffirst({#1}{% \incrlabel[<>]{(offset)foo}
+      \incrlabel@do@#1X{#2}%
     }{% \incrlabel[<>]{foo}
-      \incrlabel@do@{#1}(0)#2X{#3}%
+      \incrlabel@do@(0)#1X{#2}%
     }%
   }%
 }
@@ -148,9 +154,65 @@
       #2%
     }%
 }
-\def\incrlabel@do@#1(#2)#3X#4{%
-  \x@\x@\x@\xdef\x@\csname beamincr@#1@#3\endcsname{\the\numexpr #2+#4\relax}%
+
+\def\incrlabel@do@(#1)#2X#3{%
+  \csxdef{beamincr@\frame@nameornumber @#2}{\the\numexpr #1+#3\relax}%
 }
+
+
+%% \incrlabelcode[frame]{label}{code} - execute code when label evaluated
+\newcommand\incrlabelcode[3][\frame@nameornumber]{%
+  \csgdef{beamincr@#1@#2}{#3}%
+}
+
+%% 
+%% built-in labels
+%%
+
+%% . -> current increment
+\incrlabelcode[global]{.}{\@currentincr}
+
+%% ! -> last reset increment
+% (protect to delay expansion of reset counter until evaluation)
+% use local offset processing -- else \@@incrref@offset would force expansion
+\protected\def\beamincr@lastreset#1{%
+  % At one point beamer \futurelets \next=\beamincr@lastreset, calls \ifcat\next a, which evaluates
+  % \beamincr@lastreset{a}, which fails as a is not a number.  Test specifically for this case.
+  \if a#1 0a\else
+    \ifnumequal{\c@beamincr@lastreset}{0}% ignore offset if reset to 0
+      {0}{\the\numexpr #1+\c@beamincr@lastreset\relax}%
+  \fi%
+}
+\csdef{beamincr@global@!@offsetcode}{\beamincr@lastreset}
+
+%% various overlay counting labels
+\AtBeginEnvironment{beamer@framepauses}{%
+  %% @ -> current overlay number
+  \incrlabel<\beamer@overlaynumber>{@}%
+  %% ^ -> first overlay used
+  \ifcsdef{beamincr@\frame@nameornumber @^}{%
+    \edef\current@first{\csuse{beamincr@\frame@nameornumber @^}}%
+    \ifnumless{\beamer@overlaynumber}{\current@first}{\incrlabel<\beamer@overlaynumber>{^}}{}%
+  }{\incrlabel<\beamer@overlaynumber>{^}}%
+  %% $* -> last overlay used so far
+  \edef\current@end{\csuse{beamincr@\frame@nameornumber @$*}}%
+  \ifnumgreater{\beamer@overlaynumber}{0\current@end}{\incrlabel<\beamer@overlaynumber>{$*}}{}%
+  %% $ -> last overlay number -- initialised from aux but increment if exceeded
+  \edef\current@end{\csuse{beamincr@\frame@nameornumber @$}}%
+  \ifnumgreater{\beamer@overlaynumber}{0\current@end}{\incrlabel<\beamer@overlaynumber>{$}}{}%
+  %% add frame to list of framenames (to write $ defns to aux at end)
+  \xifinlist{\frame@nameornumber}{\beamincr@framelist}{}{\listxadd{\beamincr@framelist}{\frame@nameornumber}}% 
+}
+
+%% write out the $ defns for all frames to aux
+\def\beamincr@framelist{}% initialise list
+\AtEndDocument{%
+  \renewcommand*\do[1]{%
+    % use $* (not $) otherwise $ would never be reduced
+    \immediate\write\@auxout{\string\csgdef{beamincr@#1@$}{\csuse{beamincr@#1@$*}}}%
+  }\dolistloop{\beamincr@framelist}%
+}
+
 
 
 
@@ -222,8 +284,6 @@
 }
 
 
-
-
 %% \incrref{label} - print the incr number associated with label in the current frame
 %% \incrref[framename]{label} - reference a different frame
 %% \incrref{label(offset)} - add a numerical offset, possibly negative.
@@ -236,41 +296,30 @@
 % parens and knows to ignore it.
 
 
-\newcommand\incrref[2][\beamer@againname]{%
+\newcommand\incrref[2][\frame@nameornumber]{%
   \@incrref[#1]#2()%
 }
 \def\@incrref[#1]#2(#3){%
   \@ifempty{#3}%
-           {\@@incrref[#1]#2(0)}%
-           {\@@incrref[#1]#2(#3)\@gobbleparens}%
-}
-
-% avoid expansion of ! refs until the bitter end using \protected\def
-\protected\def\beamincr@lastreset#1{%
-  % At one point in its internals beamer \futurelets \next=\beamincr@lastresest, and calls
-  % \ifcat\next a, which evaluates \beamincr@lastresest{a}, which fails as `a is not a number.  Test
-  % specifically for this case.
-  \if a#1 0a\else
-    \ifnumequal{\c@beamincr@lastreset}{0}% ignore offset if reset to 0
-      {0}{\the\numexpr #1+\c@beamincr@lastreset\relax}%
-  \fi
-}
-\def\@@incrref[#1]#2(#3){%
-  \if.#2% this breaks if the incrlabel is .foo.  fixes all seem to require additional packages
-    \@@incrref@offset{\@currentincr}{#3}%
-  % \number \numexpr \@currentincr + #3\relax%
-  \else\if!#2%
-   \beamincr@lastreset{#3}%
-  \else
-    \@ifundefined{beamincr@#1@#2}%
-      {\if@allowundefincrref\x@\@firstoftwo\else\x@\@secondoftwo\fi
-          {\@@incrref@offset{0}{0}}%
-          {\PackageError{beamincr}{No label #2 in frame #1}{}}%
-      }%}%
-      {\x@\@@incrref@offset\x@{\csname beamincr@#1@#2\endcsname}{#3}}%
-  \fi\fi%
+   {\@@incrref[#1]#2(0)}%
+   {\@@incrref[#1]#2(#3)\@gobbleparens}%
 }
 \def\@gobbleparens#1(){}
+
+\def\@@incrref[#1]#2(#3){%
+  \ifcsdef{beamincr@#1@#2}% check for frame-local label defn
+    {\x@\@@incrref@offset\x@{\csname beamincr@#1@#2\endcsname}{#3}}%
+    {\ifcsdef{beamincr@global@#2}% then for global defn (usually code)
+      {\@@incrref@offset{\csuse{beamincr@global@#2}}{#3}}%
+      {\ifcsdef{beamincr@global@#2@offsetcode}% then for offset processing code
+        {\csuse{beamincr@global@#2@offsetcode}{#3}}%
+        {\if@allowundefincrref\x@\@firstoftwo\else\x@\@secondoftwo\fi
+          {0}%
+          {\PackageError{beamincr}{No label #2 in frame #1}{}}%
+        }%
+      }%
+    }%
+}
 
 % no offset on 0 increments
 \def\@@incrref@offset#1#2{\ifnumequal{#1}{0}{0}{\number\numexpr #1+#2\relax}}
@@ -413,14 +462,14 @@
 % foo- -> Xfoo--X- ->#2=foo #3={} remaining X-
 \def\@parseincrspec@handledash#1X#2-#3-{%
   \@ifempty{#2}{% leading -, label in #3, gobble X-
-    \@zer@orempty{\@incrref[\beamer@againname]#3#1}-\@incrref[\beamer@againname]#3#1%
+    \@zer@orempty{\@incrref[\frame@nameornumber]#3#1}-\@incrref[\frame@nameornumber]#3#1%
     \@gobblexdash%
   }{%
     \@ifempty{#3}{% trailing -, label in #3, gobble X-
-      \@incrref[\beamer@againname]#2#1-\@zer@orempty{\@incrref[\beamer@againname]#2#1}%
+      \@incrref[\frame@nameornumber]#2#1-\@zer@orempty{\@incrref[\frame@nameornumber]#2#1}%
       \@gobblexdash%
     }{% no -, label in #2
-      \@incrref[\beamer@againname]#2#1}% just resolve this ref
+      \@incrref[\frame@nameornumber]#2#1}% just resolve this ref
     }%
 }
 \def\@gobblexdash#1X-{}
@@ -468,7 +517,7 @@
 % #3: rest of input to next !
 \def\@@parseresetspec#1#2#3!{%
   #2%put count value on stream
-  \@parseresetspec{#1|resetincr\string @#2}#3!%add new action and parse remainder
+  \@parseresetspec{#1|resetincr\at#2}#3!%add new action and parse remainder
 }
 
 
@@ -503,8 +552,8 @@
   \if=#1% label found
     \@ifempty{#2}% check there's nothing between = and offset
       {\@ifempty{#3}% 
-        {incrlabel@action\string @*}% no offset
-        {incrlabel@action\string @#3}% place offset as number
+        {incrlabel@action\at*}% no offset
+        {incrlabel@action\at#3}% place offset as number
     }{%
       \PackageError{beamincr}{Label action field contains extra text: #2}{}%
     }%
@@ -546,7 +595,7 @@
 \def\@iffirsttilde#1#2X{\ifx~#1\x@\@firstoftwo\else\x@\@secondoftwo\fi}
 \def\@ifsecondempty#1#2X{\@ifempty{#2}}
 \def\@copytotildetilde#1~~{#1}
-\def\@putdefaultspecaction#1#2X{#2|#1defaultspec\string @#2}
+\def\@putdefaultspecaction#1#2X{#2|#1defaultspec\at#2}
 
 %% 
 %% install overlay parsing in beamer commands
@@ -741,28 +790,55 @@
 }{\ignorespacesafterend}
 \@incremental@env@angles{dolongdef}
 
+
+\newcommand\incritem@next[1][<.->&<+->]{\incritem@next@#1&&}
+\def\incritem@next@#1&#2&{\@ifempty{#2}{\incritem@next@@{#1}{\beamer@defaultospec}}{\incritem@next@@{#1}{#2}\@gobbleamp}}
+\def\incritem@next@@#1#2#3\@endnext{%
+  \let\saved@defaultospec\beamer@defaultospec\edef\beamer@defaultospec{#2}%
+  \item#1#3%
+  \let\beamer@defaultospec\saved@defaultospec}
+\def\@gobbleamp#1&{}
+
+\newenvironment{incrementalitemize}{%
+  \def\incremental@do{\incritem@next}\itemize\Collect@Body\@incremental%
+}{\enditemize\ignorespacesafterend}
+\@incremental@env@angles{itemize}
+
 \newcounter{next}
 
 %% incremental[do] internals
 
+% default do commands do nothing
+\let\incremental@do\relax
+\let\incremental@do@prenext\relax
+
+% for /next +/ label -- recurse to find first /next n/ > currentincr
+\def\@nextplus#1{%
+  \ifcsdef{beamincr@\frame@nameornumber @next #1}{%
+    \ifnumless{\@currentincr}{\csuse{beamincr@\frame@nameornumber @next #1}}%
+     {#1}{\@nextplus{\the\numexpr #1+1\relax}}%
+  }{XX}%
+}
+
 % process the body of environment
 \long\def\@incremental#1{%
   \setcounter{next}{0}%
+  \incrlabelcode{next +}{\number\numexpr0\csuse{beamincr@\frame@nameornumber @next \@nextplus{0}}\relax}% create /next +/ label
   \@incremental@optspec#1\nextX% ungroup and terminate input
 }
 
 % environment option default spec
-\newcommand\@incremental@optspec[1][\beamer@defaultospec]{%
-  \edef\beamer@defaultospec{#1}% set beamer@defaultospec locally
-  \@incremental@firstfield%
+\newcommand\@incremental@optspec[1][<+->]{% defaults to <+->
+  \edef\beamer@defaultospec{#1}%
+  \@incremental@prenext%
 }
 
 % #1: field to first \next
 % #2: remaining fields including terminal \next
-\long\def\@incremental@firstfield#1\next#2X{%
+\long\def\@incremental@prenext#1\next#2X{%
   \ifwhitespace{#1}%
-    {\stepcounter{next}\@incremental@next@chkstar#2X}        % skip if nothing before first \next
-    {\@incremental@next@spec@nocmd#1\next#2X}%
+    {\incrlabel{next \thenext}\stepcounter{next}\@incremental@next@chkstar#2X}% skip if nothing before first \next
+    {\@incremental@prenext@spec[<.->]#1\next#2X}% default spec for pre-next field is <.->
 }
 
 % check for starred \next => no command
@@ -771,16 +847,32 @@
 }
 
 % check for overlay spec within the field
-\def\@incremental@next@spec@nocmd{%
+\newcommand\@incremental@next@spec@nocmd[1][\beamer@defaultospec]{%
   \@ifnextchar<%input starts with overlay spec char
     {\@incremental@do@next@nocmd}%
-    {\x@\@incremental@do@next@nocmd\beamer@defaultospec}%
+    {\x@\@incremental@do@next@nocmd#1}%
 }
 % #1: spec
 % #2: field contents
 % #3: remaining fields
 \long\def\@incremental@do@next@nocmd<#1>#2\next#3X{%
-    \action<#1>{#2}%
+    \action<#1>{\incrlabel{next \thenext}#2}%
+    \@ifempty{#3}%
+      {}% done
+      {\stepcounter{next}\@incremental@next@chkstar#3X}%
+}
+
+
+\newcommand\@incremental@prenext@spec[1][\beamer@defaultospec]{%
+  \@ifnextchar<%input starts with overlay spec char
+    {\@incremental@do@prenext}%
+    {\x@\@incremental@do@prenext#1}%
+}
+% #1: spec
+% #2: field contents
+% #3: remaining fields
+\long\def\@incremental@do@prenext<#1>#2\next#3X{%
+    \action<#1>{\incrlabel{next \thenext}\incremental@do@prenext#2\@endnext}%
     \@ifempty{#3}%
       {}% done
       {\stepcounter{next}\@incremental@next@chkstar#3X}%
@@ -796,7 +888,7 @@
 % #2: field contents
 % #3: remaining fields
 \long\def\@incremental@do@next<#1>#2\next#3X{%
-    \action<#1>{\incremental@do#2\@endnext}%
+    \action<#1>{\incrlabel{next \thenext}\incremental@do#2\@endnext}%
     \@ifempty{#3}%
       {}% done
       {\stepcounter{next}\@incremental@next@chkstar#3X}%
@@ -846,7 +938,6 @@
     \csgdef{end#1}{\csname end#1@orig\endcsname}%
   }% fail silently if not defined
 }
-
 
 
 
@@ -1015,10 +1106,10 @@
 
 \CreateIncrementalAlignmentEnvironment{align*}{0}[<+->&<.->&<.->&<.->&<.->&<.->&<.->&<.->]
 %\CreateIncrementalAlignmentEnvironment{align}{0}[<+->&<.->&<.->&<.->&<.->&<.->&<.->&<.->]
-%\CreateIncrementalAlignmentEnvironment{align}{0}[<+-|eqnum\string @+->&<.->&<.->&<.->&<.->&<.->&<.->&<.->]
+%\CreateIncrementalAlignmentEnvironment{align}{0}[<+-|eqnum\at+->&<.->&<.->&<.->&<.->&<.->&<.->&<.->]
 \CreateIncrementalAlignmentEnvironment{gather*}{0}[<+->]
 %\CreateIncrementalAlignmentEnvironment{gather}{0}[<+->]
-%\CreateIncrementalAlignmentEnvironment{gather}{0}[<+-|eqnum\string @+->][gather*]
+%\CreateIncrementalAlignmentEnvironment{gather}{0}[<+-|eqnum\at+->][gather*]
 \CreateIncrementalAlignmentEnvironment{tabular}[1]{1}[<.->]
 \CreateIncrementalAlignmentEnvironment{tabular*}[1]{2}[<.->]
 
