@@ -799,7 +799,7 @@
 
 % field processing commands for incrementalitemize
 \def\incritem@setspec[#1]{\def\incritem@spec{#1}}
-\incritem@setspec[<.->&<+->]%
+\incritem@setspec[<.->&<~>]%
 % multiple \x@s needed because of \newcommand option munging
 \newcommand\incritem@next[1][\incritem@spec]{\x@\x@\x@\incritem@next@#1&&}
 \def\incritem@next@#1&#2&{%
@@ -1121,6 +1121,181 @@
 
 \renewcommand\pointtonode[2][180]{\tikz[baseline]\node[anchor=base,text height=1.5ex,inner sep=0pt,pointer={#1}]{#2};}
 
+%%
+%% glerts
+%%
+
+% initialise a glert style
+\def\makeglertstyle#1{%
+  % initialise (empty) styles
+  \defineglertstyle@store{#1}{picture}{active}[]{}\defineglertstyle@store{#1}{picture}{inactive}[]{}%
+  \defineglertstyle@store{#1}{bbox}{active}[]{}\defineglertstyle@store{#1}{bbox}{inactive}[]{}%
+  \defineglertstyle@store{#1}{node}{active}[]{}\defineglertstyle@store{#1}{node}{inactive}[]{}%
+  \defineglertstyle@store{#1}{path}{active}[]{}\defineglertstyle@store{#1}{path}{inactive}[]{}%
+
+  \tikzset{glert #1/.code={% install the glert style
+      \if@resetoninstall\pgfkeys{/tikz/glert null}\@resetoninstallfalse\fi
+      \pgfqkeys{/tikz}{glert picture inactive/.append style={glert #1 picture inactive={##1}}}%
+      \pgfqkeys{/tikz}{glert picture active/.append style={glert #1 picture active={##1}}}%
+      \pgfqkeys{/tikz}{glert bbox inactive/.append style={glert #1 bbox inactive={##1}}}%
+      \pgfqkeys{/tikz}{glert bbox active/.append style={glert #1 bbox active={##1}}}%
+      \pgfqkeys{/tikz}{glert node inactive/.append style={glert #1 node inactive={##1}}}%
+      \pgfqkeys{/tikz}{glert node active/.append style={glert #1 node active={##1}}}%
+      \pgfqkeys{/tikz}{glert path inactive/.append style={glert #1 path inactive={##1}}}%
+      \pgfqkeys{/tikz}{glert path active/.append style={glert #1 path active={##1}}}%
+  }}
+  \pgfkeys{/glert/#1/.forward to=/tikz/glert #1}%
+}
+
+% set an object style #1 - glert, #2 - object, #3 - (in)active, [#4] default, #5 - style
+\def\defineglertstyle#1#2#3{\@ifnextchar[{\defineglertstyle@store{#1}{#2}{#3}}{\defineglertstyle@store{#1}{#2}{#3}[]}}
+\def\defineglertstyle@store#1#2#3[#4]#5{%
+  \tikzset{glert #1 #2 #3/.style={#5}}%
+  \ifblank{#4}{}{\tikzset{glert #1 #2 #3/.default={#4}}}%
+}
+% define an glert path (appended to node) #1 - glert; #2 - (in)active; #3 - path
+\def\defineglertpath#1#2#3{%
+  \defineglertstyle@store{#1}{node}{#2}[]{append after command={\pgfextra \path [glert?path] #3;\endpgfextra}}%
+}
+
+% the null glert style clears all the styles
+\tikzset{glert null/.code={%
+    \pgfqkeys{/tikz}{glert picture inactive/.style={}}%
+    \pgfqkeys{/tikz}{glert picture active/.style={}}%
+    \pgfqkeys{/tikz}{glert bbox inactive/.style={}}%
+    \pgfqkeys{/tikz}{glert bbox active/.style={}}%
+    \pgfqkeys{/tikz}{glert node inactive/.style={}}%
+    \pgfqkeys{/tikz}{glert node active/.style={}}%
+    \pgfqkeys{/tikz}{glert path inactive/.style={}}%
+    \pgfqkeys{/tikz}{glert path active/.style={}}%
+  }%
+}
+\pgfkeys{/glert/null/.forward to=/tikz/glert null}%
+
+% define some basic glert styles
+\makeglertstyle{alert}\defineglertstyle{alert}{node}{active}[red]{text=#1}
+\makeglertstyle{box}\defineglertstyle{box}{node}{active}[red]{draw=#1,very thick}
+\makeglertstyle{ellipse}\defineglertstyle{ellipse}{node}{active}[red]{ellipse,draw=#1}
+\makeglertstyle{highlight}\defineglertstyle{highlight}{node}{active}[red]{fill=#1,fill opacity=0.2,text opacity=1}
+\makeglertstyle{uline}\defineglertpath{uline}{active}{(\glertnode.south east) -- (\glertnode.south west)}
+     \defineglertstyle{uline}{path}{active}{draw,red,very thick,#1}
+\providecommand\tikzfading[1][]{}% do nothing if fading library not loaded
+\tikzfading[name=spotlight,inner color=transparent!0, outer color=transparent!100]
+\makeglertstyle{spotlight}\defineglertstyle{spotlight}{node}{active}{ellipse,fill=#1,path fading=spotlight}
+\makeglertstyle{connect}\defineglertpath{connect}{active}{(\glertnode) to #1}
+     \defineglertstyle{connect}{path}{active}{overlay,draw,red,very thick,<->}
+
+\def\@glert@calloutpos{2.5}
+\def\@glert@callout@parser@chkopt{\@ifnextchar[{\@glert@callout@parser}{\@glert@callout@parser[]}}
+\def\@glert@callout@parser[#1]#2:#3X{\pgfkeysalso{
+    pos/.store in={\@glert@calloutpos}, #1,
+    at=($(\glertnode.center)!\@glert@calloutpos!(\glertnode.#2)$),
+    callout absolute pointer=(\glertnode.#2), node contents={#3}}}
+\tikzset{glert callout parser/.code={\@glert@callout@parser@chkopt#1X}}
+\makeglertstyle{callout}\defineglertpath{callout}{active}{node[rectangle callout, draw, glert callout parser={#1}]}
+
+% trigger reset on installation of first glert style from options (but no reset if there aren't any styles)
+\newif\if@resetoninstall
+\pgfkeys{/glert/reset/.is if=@resetoninstall}
+\pgfkeys{/glert/reset/.default=true}
+
+% allow user to fine tune each object in \glert options
+\pgfkeys{
+  /glert/picture/.code={\pgfqkeys{/tikz}{glert picture active/.append style={#1}}},
+  /glert/picture active/.code={\pgfqkeys{/tikz}{glert picture active/.append style={#1}}},
+  /glert/picture inactive/.code={\pgfqkeys{/tikz}{glert picture inactive/.append style={#1}}},
+%
+  /glert/bbox/.code={\pgfqkeys{/tikz}{glert bbox active/.append style={#1}}},
+  /glert/bbox active/.code={\pgfqkeys{/tikz}{glert bbox active/.append style={#1}}},
+  /glert/bbox inactive/.code={\pgfqkeys{/tikz}{glert bbox inactive/.append style={#1}}},
+%
+  /glert/node/.code={\pgfqkeys{/tikz}{glert node active/.append style={#1}}},
+  /glert/node active/.code={\pgfqkeys{/tikz}{glert node active/.append style={#1}}},
+  /glert/node inactive/.code={\pgfqkeys{/tikz}{glert node inactive/.append style={#1}}},
+%
+  /glert/path/.code={\pgfqkeys{/tikz}{glert path active/.append style={#1}}},
+  /glert/path active/.code={\pgfqkeys{/tikz}{glert path active/.append style={#1}}},
+  /glert/path inactive/.code={\pgfqkeys{/tikz}{glert path inactive/.append style={#1}}},
+}
+% allow tikz keys in \glert options
+\pgfkeys{/glert/.search also={/tikz}}
+
+% (naming) glerts
+\pgfkeys{
+  /handlers/first char syntax=true,
+  /handlers/first char syntax/the character (/.initial=\glert@name@node
+}
+\def\glert@name@node#1{\glert@name@node@#1}
+\def\glert@name@node@(#1){\pgfkeysalso{node inactive={name={#1}}, node active={name={#1}}}}
+
+%% user glert commands
+
+% install a glert style
+\newcommand{\useglert}[1]{\pgfqkeys{/glert}{reset,#1}}
+\newcommand{\addglert}[1]{\pgfqkeys{/glert}{#1}} % no reset
+\useglert{alert} % default is red text -- same as \alert
+
+% set glerts
+\newcommand\glert{\@ifstar{\@glert@star}{\@glert}}
+\newenvironment<>{glertenv}{\@glertsactivate{#1}}{\ignorespacesafterend}% glertenv is the same as glertsenv
+\newcommand<>\glerts[1]{{\@glertsactivate{#2}#1}}% group to prevent \glert* activation out of scope
+\newenvironment<>{glertsenv}{\@glertsactivate{#1}}{\ignorespacesafterend}% environment groups for us
+
+% internals
+\newcommand<>\@glert[2][]{{\@glertsactivate{#3}\@glert@star[#1]{#2}}} % group to restrict activation
+\newcommand\@glert@star[2][]{%
+  \ifmmode\@glert@set@node@mathcheck#1,X{#2}\else\@glert@set@node{}{}[#1]{#2}\fi
+}
+
+\def\@glert@set@node@mathcheck#1#2X#3{% [opt]{text} -- check first token in opt for mathstyle
+  \ifdefequal{#1}{\displaystyle}{\@glert@set@node@math{\displaystyle}{[#2]{#3}}}{%
+    \ifdefequal{#1}{\textstyle}{\@glert@set@node@math{\textstyle}{[#2]{#3}}}{%
+      \ifdefequal{#1}{\scriptstyle}{\@glert@set@node@math{\scriptstyle}{[#2]{#3}}}{%
+        \ifdefequal{#1}{\scriptscriptstyle}{\@glert@set@node@math{\scriptscriptstyle}{[#2]{#3}}}{%
+          \mathpalette\@glert@set@node@math{[#1#2]{#3}}%
+  }}}}%
+}
+\def\@glert@set@node@math#1#2{%mathstyle; args as {[opt]{text}}
+  \@glert@set@node$#1#2%
+}
+
+% Ideally we would set the node contents in a box with appropriate mathstyle and then call tikz once.
+% But \mathchoice (and therefore \mathpalette) sets all four arguments, and only chooses the
+% appropriate one at the end of mmode.
+% So the function called by \mathpalette has to complete the rendering (which it does 4 times).
+% This is not efficient, but it seems necessary.
+\newbox\@glerttext
+\newbox\@glertphtm
+\def\@glert@set@node#1#2[#3]#4{% (math)delim, style, opts, text
+  \setbox\@glerttext=\hbox{#1#2#4#1}%
+  \setbox\@glertphtm=\null%
+  \wd\@glertphtm\wd\@glerttext\ht\@glertphtm\ht\@glerttext\dp\@glertphtm\dp\@glerttext%
+  \begingroup% keep defs and style local
+  \def\glerttextraw{#4}%
+  \def\glerttextbox{\copy\@glerttext}%
+  \def\glertphantom{\copy\@glertphtm}%
+  \def\glerttextwidth{\wd\@glerttext}%
+  \def\glerttextheight{\ht\@glerttext}%
+  \def\glerttextdepth{\dp\@glerttext}%
+  \def\glertbbox{@glertbbox}%
+  \def\glertnode{@glertnode}%
+  \pgfqkeys{/glert}{reset,#3}%
+  \tikz[baseline,remember picture, glert?picture]{%
+    \path[use as bounding box,glert?bbox] node[anchor=base,inner sep=0pt,glert?bbox,alias=@glertbbox]{\copy\@glertphtm};
+    \path node[anchor=base,glert?node,alias=@glertnode]{\copy\@glerttext};
+  }%
+  \endgroup%
+}
+
+% activate styles switch from inactive to active
+\def\@glertsactivate#1{%
+  \alt#1{\tikzset{glert?picture/.style={glert picture active}}}{\tikzset{glert?picture/.style={glert picture inactive}}}%
+  \alt#1{\tikzset{glert?bbox/.style={glert bbox active}}}{\tikzset{glert?bbox/.style={glert bbox inactive}}}%
+  \alt#1{\tikzset{glert?node/.style={glert node active}}}{\tikzset{glert?node/.style={glert node inactive}}}%
+  \alt#1{\tikzset{glert?path/.style={glert path active}}}{\tikzset{glert?path/.style={glert path inactive}}}%
+}
+% start inactive
+\@glertsactivate{<0>}
 
 
 %% 
