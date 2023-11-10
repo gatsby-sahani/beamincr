@@ -17,6 +17,8 @@
 \usepackage[left=2.25cm,right=2.25cm,top=2.5cm,bottom=2.5cm,nohead]{geometry}
 \usepackage{translator}
 
+\setcounter{tocdepth}{4}
+
 %% more packages
 \usepackage{tabularx}
 \usepackage{etoolbox}
@@ -25,6 +27,9 @@
 
 %% beamer userguide macros
 \input{beamerug-macros}
+
+\parskip0.5ex
+\parindent0pt
 
 \def\beamincr{\texttt{beamincr}}
 
@@ -350,15 +355,14 @@ redisplay certain slides in the frame with \cmd\againframe\ or
 \end{command}
 \vskip-3ex
 \begin{commandalt}[\textbackslash incrlabel=//][incrlabelslash]%
-  {\incrlabel\osarg{incrnum}\opt{\meta{=}}\texttt{/}\meta{label}\texttt{/}}%
+  {\incrlabel\osarg{incrnum}\opt{\meta{=}\dots}\texttt{/}\meta{label}\texttt{/}}%
   {attach \meta{label} to current increment or to \meta{incrnum}}%
 %
   By default, this command attaches the current increment number to the label
   \meta{label}.  Once defined, the labelled increment can be recovered in
   (almost) any overlay spec using the constructs discussed below.  The
-  \meta{label} can contain most characters, but should not start with any of the
-  characters \texttt{.!=} or contain any of \texttt{()-~}.
-  \hypertarget{label}{}%
+  \meta{label} can contain most characters, but should not start with \texttt{=}
+  or contain any of \texttt{()-~}.  \hypertarget{label}{}%
 
   The \texttt= in the second form is optional, but if it is present then the
   \texttt{/\meta{label}/} may be separated from the \texttt= by additional
@@ -390,12 +394,52 @@ redisplay certain slides in the frame with \cmd\againframe\ or
 The general form of an increment reference is
 \begin{commandalt}[<incrref>]{{ \meta{incrref}}: \meta{label}\ooffset}{}
 %
-  The label can be a string assigned by a call to \cmd\incrlabel, or the
-  special label `\ttx.' which refers to the current increment (this is subtly
-  different to the incremental overlay specification `\ttx.').  A further
-  special label `\cmdlink{/!/}{!}'  is introduced in \cref{sec:actions:!}.  The
-  \meta{offset}, if given, is added to the increment indicated by the label.  It
-  can be negative.
+  The label can be a string assigned by a call to \cmd\incrlabel, or be one of
+  the following special characters:
+  \begin{itemize}
+  \item[\tt .]  \hypertarget{incrref.}{}The current increment (roughly
+    equivalent to the incremental overlay specification `\ttx.', but can be used
+    in places where only an \meta{incrref} is valid).
+
+  \item[\tt \string^] \hypertarget{incrref^}{}The first overlay used in the
+    frame.  This will usually evaluate to 1, but could be different if a slide
+    range is specified for the frame.  It can be used to display text on the
+    first slide shown, even if this is not slide 1.  For labelled frames (used
+    with \cmd\againframe), the definition is tied to the label, and so will
+    evaluate to the first overlay shown so far across all the uses of the frame.
+
+  \item[\tt \string$] \hypertarget{incrref$}{}The last overlay (used) in the
+    frame.  This is stored in the \ttx{.aux} file and so generally will only be
+    correct after a second compilation.  It is tied to the frame label and so
+    can be used to display only the final slide of a frame again:
+    \cmd\againframe|</$/>{|\meta{frame label}|}|.  By combining with |^| it is
+    possible to set a slide range at the first use and then automatically
+    follow the same range with subsequent \cmd\againframe calls. \example
+\begin{verbatim}
+  \begin{frame}<2-5>[label=myframe] % only use slides 2-5 in this presentation
+    ...
+  \end{frame}
+  ...
+  \againframe</^/-/$/>{myframe} % show slides 2-5 again
+  ...
+  \againframe</$/>{myframe} % show only slide 5
+\end{verbatim}
+
+  \item[\tt \string$*] \hypertarget{incrref$*}{}The highest numbered overlay in
+    the frame used so far.  This may be useful to continue the display of a
+    partially rendered frame, starting from the latest point reached in any
+    previous display.
+
+  \item[\tt \string@] \hypertarget{incrref@}{}The most recently displayed
+    overlay number in the frame.  This may be useful to continue display
+    picking up from where the last display left off.  
+  
+  \item[\tt !] \hypertarget{incrref!}{} The increment number set by the most
+    recent \cmd\resetincr\ command (or reset action as introduced in
+    \cref{sec:actions:!}).
+  \end{itemize}
+  The \meta{offset}, if given, is added to the increment indicated by the label.
+  It can be negative.
 
   Increment references can be used as part of almost any overlay
   specification by enclosing them within slashes, e.g. \ttx{</foo(2)/>}.
@@ -768,6 +812,12 @@ into overlays using the token \ttc\next\ or \ttc{\next*}.  Many will
 also apply an implicit or explicitly defined command to that material when
 \ttc\next\ is used, but omit the command for \ttc{\next*}.
 
+Each environment makes it possible to specify a default overlay specification,
+applied to all \ttc\next\ fields, unless overridden by a local value.  If no
+default is specified it is taken to be \ttx{<+->} (rather than any enclosing
+default), since it is assumed that \ttx{incremental} environments are intended
+to be, well, incremental.
+
 \subsection{Standard incremental environments}\label{sec:envs:incremental}
 \locsection{Incremental environments}
 \tracingmacros1
@@ -793,25 +843,28 @@ also apply an implicit or explicitly defined command to that material when
   from the frame or container default.  This is ordinarily \ttx{<*>}.
 
   Unlike in \ttx{itemize} environments, code can also appear before the first
-  \ttc\next.  If any does, it is treated just like \meta{next contents}: it is
-  processed with the action specification given by \osarg{pre-next specification}
-  if present, or else the default specification.  On the other hand, if nothing
+  \ttc\next.  If any does, it is processed with the action specification given
+  by \osarg{pre-next specification} if present, or else a default specification
+  of \ttx{<.->} (to use the default specification defined for the environment,
+  set \osarg{pre-next specification} to |<~>|).  On the other hand, if nothing
   but whitespace appears between the opening of the environment---or the
   optional default overlay spec---and the first \ttc\next, then no action is
-  applied.  This avoids side effects from, e.g., \ttx{<+>} specifications in
-  the default.  (The same does not apply to later empty \meta{next contents}:
-  these are always set within action commands, triggering any side effects.)
+  applied.  
 
   A counter called \ttx{next} is set to 0 in the pre-next field and then
-  advanced at every \ttc\next.  \example
+  advanced at every \ttc\next.  An increment label called \ttx{next\,\meta{n}},
+  where \meta{n} is the value of the \ttx{next} counter, is defined immediately
+  after each \ttc\next, before any contents are processed.  The label contains a
+  (single) space before the number. 
+  \example
 \begin{verbatim}
 \resetincr
 \begin{incremental}[<+->]
-  <.-> this text on slide 1;
+  <.-> this text on slide \incrref{next 0} (=1);
 \next
-  on slide 2;
+  on slide \incrref{next 1} (=2);
 \next<!/.(2)/->
-  on slide 4, but after only \thenext\ next commands.
+  on slide \incrref{next 2} (=4), after \thenext\ (=2) next commands.
 \end{incremental}
 \end{verbatim}
 \end{envwithcontents}
@@ -1044,6 +1097,116 @@ They will only be defined if \TikZ\ is also loaded in the document preamble.
 
 
 
+\subsection{Synchronising incremental environments}\label{sec:envs:synch}
+
+After an incremental environment has been defined, the special label
+\ttx{next\,+} evaluates to the increment associated with the next \ttc\next: or,
+more precisely, to the smallest \ttx{/next\,\meta{n}/} that is strictly greater
+than the current increment and to the largest of them if none are larger.  This
+label can be used to easily synchronise later incremental environments to a
+first one, even if each \ttc\next\ step involves multiple increments.  \example
+\begin{verbatim}
+  \begin{<>}
+  \next first line \onslide<+->{with an addendum}\\
+  \next second line\\
+  \end{<>}
+
+  \resetincr % ensure currentincr is less than /next 1/
+  \begin{<>}[<!/next +/->]
+  \next match the first line on slide \incrref{next 1}\\
+  \next match the second line on slide \incrref{next 2}\\
+  \next match the second line on slide \incrref{next +}\\
+  \end{<>}
+\end{verbatim}
+The reset specification in \ttx{<!/next +/->} is necessary to advance the current
+increment.
+%
+The values of \ttx{next\,\meta{n}} are redefined in the second environment, but
+mostly to the same values as in the first.  The exception in this example is
+\ttx{next\,0} which will be set to 1 (by the \cmd\resetincr) regardless of its
+value in the first environment.  As a side effect, this ensures that \ttx{/next
+  +/} at the first \ttc\next\ call evaluates to \ttx{/next 1/} rather than
+\ttx{/next 0/}.
+
+It is possible to wrap an \ttx{itemize} environment within an incremental one to
+provide a similar functionality, albeit with warnings discussed below.
+\example
+\begin{verbatim}
+  \begin{<>}\begin{itemize}
+  \next\item<.-> first item \item with an addendum\\
+  \next\item<.-> second item\\
+  \end{itemize}\end{<>}
+
+  \resetincr[/next 0/] % ensure currentincr is less than /next 1/
+  \begin{itemize}[<!/next +/->]
+  \item match the first item on slide \incrref{next 1}\\
+  \item match the second item on slide \incrref{next 2}\\
+  \item match the second item on slide \incrref{next +}\\
+  \end{itemize}
+\end{verbatim}
+The explicit \ttx{<.->} specifications in the first \ttx{itemize} are needed
+because the incremental environment sets the default spec to \ttx{<+->}, and so
+would otherwise cause each \ttc\item\ to introduce a new increment.  It is not
+possible to set separate default specs for the incremental and \ttx{itemize}
+environments when both are used explicitly.  Thus, the addendum
+\ttc\item\ inherits the \ttx{<+->} default.
+
+The second \ttx{itemize} does not need to be wrapped within an incremental
+environment.  It simply accesses the labels defined in the first.
+
+Note that both the \ttx{incremental} and \ttx{itemize} environments group the
+contents of \ttc\next\ or \ttc\item\ commands within environments.  it is thus
+surprising that the interleaved construct works at all.  There are cases where
+it will fail.  In general, when using |\next\item| it is best to have display
+(or uncover) control determined by the \ttc\next\ command, but appearance (such
+as alerts) determined by the \ttc\item.  
+
+A shorthand environment is available, which adds the capability to define
+separate default specifications for \ttc\next\ and \ttc\item\ calls.  However,
+this does not resolve the fragility of the interleaving.
+
+\begin{envwithcontents}{{incrementalitemize}\optsarg{default
+      specification}\opt{\tt[\sarg{next item default}\&\sarg{separate item default}\ttx]}}
+  {\item \hskip1em \osarg{pre-next specification} \opt{\meta{pre-next contents}}
+    \item \ttx{\string\next}\osarg{next specification}
+    \item \hskip1em \meta{next contents}
+    \item \ttx{\string\item}\osarg{item specification}
+    \item \hskip1em \meta{item contents}
+    \item \hskip2em $\vdots$
+  }
+  This environment is similar to 
+\begin{verbatim}
+  \begin{docmd<>}[0]{\item<.->}
+  \begin{itemize}
+  \next<next specification> next contents 
+  \item<item specification> item contents        
+  ...
+  \end{itemize}
+  \end{docmd<>}
+\end{verbatim}
+  Each \ttc\next\ creates an \ttc\item\, by default displayed from the increment
+  in effect after the \ttc\next.  It also increments the \ttx{next} counter and
+  defines a corresponding \ttx{next\,\meta{n}} label.  An explicit
+  \ttc\item\ uses the same default specification as \ttc\next\ (which itself
+  defaults to \ttx{<+->} in incremental environments), but does not set the
+  next-related counter or label.
+
+  The second optional argument (which must follow the first) makes it possible
+  to change the default overlay behaviour of the \ttc\item s.  It can contain
+  one or two specifications, separated by an \& symbol.  The first applies to
+  the implicit \ttc\item\ commands generated by each \ttc\next.  The second, if
+  present, applies to any explicit \ttc\item s.  If absent, it is set to the
+  overall default specification.  The default values if no optional arguments
+  are given are |[<+->][<.->&<~>]|.
+
+  
+  
+  Note that any \meta{pre-next contents} cannot generate typeset text, as this
+  would precede the first \ttc\item\ command.
+\end{envwithcontents}
+\begin{environment}{{itemize<>}\optsarg{default specification}}
+  This is a synonym for |\begin{incrementalitemize} ... \end{incrementalitemize}|.
+\end{environment}
 
 
 \section{Incremental alignment environments}\label{sec:align}
@@ -1497,6 +1660,319 @@ mechanism, but that's a project for another day.
   The effect of this command is local to the containing group. 
 \end{command}
 
+
+
+\subsection{Graphical alerts}\label{sec:attention:glerts}
+
+If \TikZ\ is loaded, \beamincr\ defines various graphical alerts or
+\ttx{glerts}.  The argument to be alerted is set within an inline \TikZ\ node
+aligned with the baseline of the surrounding line, with a tight bounding box.  A
+second node or associated path is used to add the graphical embellishment. (More
+details of the construction are given in \cref{sec:attention:glerts:refining}
+below.)  Glerts can be used to draw attention at specific increments, or simply
+to highlight material on the slide in a static fashion.
+
+\subsubsection{Glert commands}\label{sec:attention:glerts:cmds}
+
+\begin{command}{\useglert\{\meta{style}$_1$\opt{=\meta{options}},
+    \opt{\meta{style}$_2$=\meta{options}}, \oarg{further options}\}}
+  {set style and options for future glerts}
+  %
+  Set one or more glert styles to be applied to subsequent \ttc{\glert[*]} calls
+  or actions, unless they define a style locally.  For a discussion of the
+  \ometa{further options}, see \cref{sec:attention:glerts:refining}.
+\end{command}
+
+\begin{command}{\addglert\{\meta{style}$_1$\opt{=\meta{options}},
+    \opt{\meta{style}$_2$=\meta{options}}, \oarg{further options}\}}
+  {add style and options for future glerts}
+  %
+  Append one or more glert styles to the current set, to be applied to subsequent
+  \ttc{\glert[*]} calls or actions, unless they define a style locally.  
+\end{command}
+
+
+\begin{command}{\glert\sarg{overlay spec}\oarg{options}\marg{argument contents}}
+  {apply a graphical alert to \meta{argument contents} on \meta{overlay spec}}
+  %
+  Apply a graphical alert to \meta{argument contents} on \meta{overlay spec}.
+  The style of the alert may be set in \ometa{options} using the same syntax as
+  in \cmd\useglert.  When inactive, \meta{argument contents} is displayed
+  unalerted within a \TikZ\ node.
+\end{command}
+
+\begin{command}{\glert*\oarg{options}\marg{argument contents}}%
+  {apply a graphical alert to \meta{argument contents} when activated}
+  %
+  Executes \ttc\glert\oarg{options}\marg{argument contents}, with the active or
+  inactive state determind by the status of any enclosing \cmd\glerts\ command
+  or action.  If there is no such command, then the glert is always inactive.
+\end{command}
+
+\begin{command}{\glerts\sarg{overlay spec}\marg{argument contents}}
+  {activate \ttc{\glert*} commands in \meta{argument contents} on \meta{overlay spec}}
+  %
+  Activate any \cmd{\glert*} commands within \meta{argument contents} on the
+  overlays indicated by \meta{overlay spec}.
+\end{command}
+
+\begin{commandalt}[<glerts@>]{{<glerts@}\meta{range}\contcmd>}{}
+  This is the action equivalent of \cmd\glerts.
+\end{commandalt}
+
+
+\subsubsection{Built-in glert styles}\label{sec:attention:glerts:builtin}
+
+A few \ttx{glert} styles are predefined.  Each displays the text in the same
+style as surrounding text when inactive.  Their actions when activated are as
+follows.
+\begin{description}
+\item[\tt null] Do nothing, even when activated.
+
+\item[\tt alert=\ometa{color, \dots}] Display text in red or \ometa{color} (like the
+  standard \ttc\alert).  This is the default glert style.
+
+\item[\tt box=\ometa{color, \dots}] Draw a rectangular frame around the text in red or
+  \ometa{color}.
+
+\item[\tt ellipse=\ometa{color, \dots}] Draw an ellipse around the text in red or
+  \ometa{color}.
+
+\item[\tt uline=\ometa{line options}] Underline the text.  The appearance of the
+  line can be altered with standard \TikZ\ line options.  The default is red and
+  ``very thick''.
+
+\item[\tt highlight=\ometa{color, \dots}] Fill a background box with partly transparent
+  red or \meta{color}, much as a highlighter would on paper.
+
+\item[\tt spotlight=\ometa{color, \dots}] Draw a fading ellipse underneath the text in
+  partly transparent red or \meta{color}.
+
+\item[\tt connect=\{\oarg{to options} (\meta{target})\}] Draw a (red, very
+  thick, double-headed arrow) line to the glert (or other \TikZ\ node) named
+  \meta{target}.  The picture containing the node must have the \ttx{remember
+    picture} option; this is always the case for glerts.  The \ometa{to options}
+  can modify the shape of the path.  The style can be changed with
+  \ttx{path=\marg{options}}.
+
+\item[\tt callout=\{\oarg{callout node options}\meta{angle}:\meta{callout text}]
+  Draw a callout node containing \meta{callout text} pointing to the glert node
+  from \meta{angle} (may be a direction keyword).  The default callout is
+  rectangular and placed at a centre-to-centre distance 2.5 times greater than
+  that from the glert node centre to its edge.  The \ometa{callout node options}
+  can change its appearance, and placement (in particular, the \ttx{pos} option
+  modifies the scaling relative to the glert node size).
+  
+\end{description}
+In the \ometa{color, \dots} arguments, a colour name (as defined by the
+\ttx{xcolor} package) can generally be followed by other line or node options.
+These can also be set as separate options as described in
+\cref{sec:attention:glerts:refining}.
+
+Multiple styles can be used together.  It they set conflicting parameters
+(e.g. \ttx{box} vs.\ \ttx{ellipse}) then the last in the calling sequence will
+prevail.
+
+
+\subsubsection{Naming glerts}\label{sec:attention:glerts:names}
+
+The name of the glert node can be set with the option
+\ttx{node=\{name=\meta{name}\}}, or, more simply, \ttx{(\meta{name})}.  The node
+can then be referenced by a \ttx{connect} glert, or from another \TikZ\ picture
+(remembering to use \ttx{remember picture} and \ttx{overlay} as appropriate).
+
+
+\subsubsection{Glerts in math mode}\label{sec:attention:glerts:math}
+
+Glert commands generally process math mode material transparently.  In
+particular, there is no need to restore the math mode or style explicitly within
+the argument as there would be with other boxed commands.  However,
+\TeX\ internals mean that to achieve this transparency, both the maths material
+and associated glert drawing must be rendered interally four times (for each of
+the four maths styles), with only one rendering being placed on the output page.
+
+Although this requirement can increase compile time, the consequences are
+generally acceptable.  However, it does create a difficulty when using named
+glerts (say, with the \ttx{connect} glert style).  The same name is associated
+with all four nodes in turn, finally being assigned to the
+\ttc\scriptscriptstyle\ version.  If that isn't the one that is used in the
+final layout, then the name ends up being associated with the bottom corner of
+the page.
+
+Thus, \beamincr\ makes it possible to specify the correct mathstyle explicitly,
+shortcircuiting the need for the four versions.  This is done by placing the
+style instruction as the \emph{first} token in the \ometa{options} to the
+\cmd\glert\ttx{[*]} command.  If a \meta{glert style} or additional options are
+to be provided, these must follow.  They can be separated from the mathstyle
+command by a comma, but this is not necessary.
+
+\example
+\begin{verbatim}
+\begin{equation*}% simple, but naming issues, and possibly inefficient
+\int_{\glert[(lo)]{-\infty}}^{\glert[(hi)]{+\infty}} e^{-i\omega t} d\omega = 2\pi\delta(t)
+\end{equation*}
+
+\begin{equation*}% contents rendered once in the specified style
+\int_{\glert[\scriptstyle (lo)]{-\infty}}^{\glert[\scriptstyle (hi)]{+\infty}}
+       e^{-i\omega t} d\omega = 2\pi\delta(t)
+\end{equation*}
+\end{verbatim}
+
+Note that math node namingdoesn't seem to work in \ttx{align} environments.
+
+
+
+
+
+\subsubsection{Refining the glert appearance}\label{sec:attention:glerts:refining}
+
+In addition to the options defined explicitly by the standard glerts above, most
+other aspects of the glert appearance can be controlled (and extended).
+Stripped of various bits of internal munging, a glert essentially creates the
+following code:\\[1ex]\ttx{%
+\string\tikz[baseline,remember picture, glert picture \meta{state}]\{\\
+\hspace*{1em}\string\path[use as bounding box, glert bbox \meta{state}]\\
+\hspace*{3em} node[anchor=base,inner sep=0pt,glert bbox \meta{state}]\{\string\phantom\{\meta{contents}\}\};\\
+\hspace*{1em}\string\path node[anchor=base, glert node \meta{state}]\{\meta{contents}\};\\
+\hspace*{1em}\string\path[\meta{style definitions}, glert path \meta{state}] \meta{style path};\\
+\}\\
+}%
+where \meta{state} is either \ttx{active} or \ttx{inactive}.
+(For the \TikZ perts: the final path is only generated when necessary, and as a
+\ttc\pgfextra\ path created within the options to the preceding node.  See
+\cref{sec:attention:glerts:defining}.)
+
+The \ttx{glert \meta{object} \ometa{state}} styles can be used to modify the
+appearance of each of the paths (or set options for the entire picture).  They
+can be set in two ways.  The first is to provide the following option within
+\cmd\useglert\ or \cmd\glert\ttx{[*]} options, following any glert style
+declaration:
+%
+\begin{commandalt}[<object> <state> (tikz option)]{{option:\meta{object} \ometa{state}}=\marg{options}}
+  {in \ttc\useglert\ or \ttc\glert \ttx{[*]}, modify glert;
+    \meta{object}=\ttx{picture\OR bbox\OR node\OR path}, \meta{state}=\ttx{active\OR inactive}}
+%
+  \meta{object}=\ttx{picture\OR bbox\OR node\OR path}; \meta{state}=\ttx{active\OR inactive}
+
+  This option must be placed within the argument to a \cmd\useglert\ or the
+  options to \cmd\glert\ or \cmd{\glert*}.  It appends the \meta{options} to the
+  \ttx{glert \meta{object} \meta{state}} style, thus modifying its appearance.
+  If \meta{state} is omitted it is taken to be \ttx{active}.
+
+  If called within \cmd\useglert, the changes will last until the next
+  \cmd\useglert\ call, but will not apply to any \cmd\glert\ttx{[*]}s that set
+  and explicit style.  Options within \cmd\glert\ttx{[*]}\ are local to that
+  instance.
+
+  (It is also possible to append to the \ttx{glert \meta{object} \meta{state}} style
+  directly with \ttc\tikzset\ or similar.  However, it is important not to
+  overwrite the style entirely, unless you know exactly what you're doing!)
+\end{commandalt}
+
+Longer lasting modifications can be achieved by altering glert-style-specific
+\TikZ\ styles.  
+
+\begin{commandalt}[glert <glert style> <object> <state> (tikz option)]
+  {{option:glert \meta{glert style} \meta{object} \meta{state}/.append
+      style}=\marg{options}}{modify \meta{glert style} appearance}
+  %
+  \meta{object}=\ttx{picture\OR bbox\OR node\OR path}; \meta{state}=\ttx{active\OR inactive}
+  
+  Modify the options of \meta{object} in the active or inactive \meta{state} of
+  \meta{glert style} glerts.  This option can be set within \ttc\tikzset,
+  \cmd\useglert, or \cmd\glert\ttx{[*]}.  In the first two cases it applies
+    throughout the current \TeX\ block.  In the latter, it applies just to the
+    glert in question (and so is effectively just a more verbose version of the
+    option above---with the exception of subtle effects possible when applying
+    multiple \meta{glert style}s.)
+    \example
+\begin{verbatim}
+\tikzset{glert box node active/.append style={inner sep=4pt}}
+\end{verbatim}
+adds a little extra space between the box and text in all subsequent
+\cmd\glert\ttx{[box]} glerts.
+\end{commandalt}
+
+Any \meta{further options} provided to \cmd\useglert\ or \cmd\glert\ttx{[*]}
+that aren't specific to glert handling are passed to \TikZ\ for interpretation.
+Thus, the extra space above could be added within a \cmd\glert\  more simply.
+\example
+\begin{verbatim}
+\glert{box, inner sep=4pt}{text}
+\end{verbatim}
+In this case, the \ttx{inner sep=4pt} option would apply to all nodes within the
+picture: however the \ttx{bbox} node sets its own default explicitly and so will
+be unaffected.  If you want to increase the space reserved for the text, use
+\example
+\begin{verbatim}
+\glert{box, bbox={inner sep=4pt}}{text}
+\end{verbatim}
+instead.
+
+\subsubsection{Defining new glerts}\label{sec:attention:glerts:defining}
+
+\begin{command}{\makeglertstyle\marg{glert style}}
+  {initialise a new empty \meta{glert style}}
+  %
+  Create and initialise a new glert style called \meta{glert style}.  This
+  creates the appropriate \TikZ\ styles and sets up the code for these to be
+  installed by \cmd\useglert\marg{glert style} or \cmd\glert\oarg{glert style} and
+  similar.  The initial styles are all empty, so the glert is equivalent to \ttx{null}.
+\end{command}
+
+\begin{command}{\defineglertstyle\marg{glert style}\marg{object}\marg{state}\oarg{default setting}\marg{tikz style}}
+  {define the style of the \meta{glert style} \meta{object} in \meta{state}}
+  %
+  Define the \meta{tikz style} assigned to \meta{object} when a \meta{glert style} glert is
+  in \meta{state}.  As usual, the \meta{tikz style} may accept an argument (or
+  value) which can be accessed in the style definition as |#1|.  The
+  \ometa{default setting} provides an optional default for this value.
+\end{command}
+
+\begin{command}{\defineglertpath\marg{glert style}\marg{state}\marg{tikz path commands}}
+  {define a path for the glert}
+  %
+  Add the following option to the \meta{glert style} node \meta{state} style:\\[1ex]\ttx{
+  append after command=\{\ttc\pgfextra \ttc\path [glert path \meta{state}] \meta{tikz path commands};\ttc\endpgfextra\}
+  }\\[1ex]%
+  %
+  This causes the path described by \meta{tikz path commands} to be created
+  after the node, with options defined by \ttx{glert path \meta{state}}.  Any
+  action on the path (such as \ttx{draw}, \ttx{fill}, \ttx{shade} \dots) should be
+  specified in the options if needed.  The following commands are available to
+  help create the path (in addition to \TikZ's \ttc\tikzlastnode):
+  \begin{description}
+  \item[\ttc\glertnode] refers to the glert node
+  \item[\ttc\glertbbox] refers to the glert bbox node
+  \item[\ttc\glerttextraw] returns the argument text passed to the glert
+  \item[\ttc\glerttextbox] displays the argument text set within a \TeX\ box
+  \item[\ttc\glertphantom] renders an empty box of the same size as \ttc\glerttextbox
+  \item[\ttc\glerttextwidth] the width of the text box
+  \item[\ttc\glerttextheight] the height of the text box above the baseline
+  \item[\ttc\glerttextdepth] the depth of the text box below the baseline
+  \end{description}
+\end{command}
+
+Here are the definitions of some of the builtin glert styles:
+\begin{verbatim}
+\makeglertstyle{alert}
+  \defineglertstyle{alert}{node}{active}[red]{text=#1}
+\makeglertstyle{box}
+  \defineglertstyle{box}{node}{active}[red]{draw=#1,very thick}
+\makeglertstyle{ellipse}
+  \defineglertstyle{ellipse}{node}{active}[red]{ellipse,draw=#1}
+\makeglertstyle{highlight}
+  \defineglertstyle{highlight}{node}{active}[red]{fill=#1,fill opacity=0.2,text opacity=1}
+\makeglertstyle{uline}
+  \defineglertpath{uline}{active}{(\glertnode.south east) -- (\glertnode.south west)}
+  \defineglertstyle{uline}{path}{active}{draw,red,very thick,#1}
+\makeglertstyle{spotlight}
+  \defineglertstyle{spotlight}{node}{active}{ellipse,fill=red,path fading=spotlight,#1}
+\makeglertstyle{connect}
+  \defineglertpath{connect}{active}{(\glertnode) to #1}
+  \defineglertstyle{connect}{path}{active}{overlay,draw,red,very thick,<->}
+\end{verbatim}
+
 \section{Selectively repeating frames}\label{sec:again}
 \locsection{Selectively repeating frames}
 
@@ -1738,8 +2214,12 @@ after resetting the current mode to \ttx{beamer}.
   \meta{num} & integer &  explicit reference to slide number\\
   \hyperlink{label}{\meta{label}} & text & value assigned by |\incrlabel|\marg{label} or {\tt<=>}\\
   \cmdlink{<incrref>}{\meta{incrref}}  & \meta{label}\ooffset  & = \tt value\{\meta{label}\}\poffset\\
-  \hfill\OR            & \tt .\ooffset  & = \tt \meta{current increment}\poffset\\
-  \hfill\OR            & \tt !\ooffset  & = \tt \meta{last increment reset}\poffset\\
+  \hfill\OR            & \tt \hyperlink{incrref.}{.\ooffset}  & = \tt \meta{current increment}\poffset\\
+  \hfill\OR            & \tt \hyperlink{incrref^}{|^|\ooffset}  & = \tt \meta{first overlay number}\poffset\\
+  \hfill\OR            & \tt \hyperlink{incrref$}{|$|\ooffset}  & = \tt \meta{final overlay number}\poffset\\
+  \hfill\OR            & \tt \hyperlink{incrref$*}{|$*|\ooffset}  & = \tt \meta{highest overlay used so far}\poffset\\
+  \hfill\OR            & \tt \hyperlink{incrref@}{|@|\ooffset}  & = \tt \meta{most recently used overlay}\poffset\\
+  \hfill\OR            & \tt \hyperlink{incrref!}{!\ooffset}  & = \tt \meta{last increment reset}\poffset\\
   \hyperlink{incrnum}{\meta{incrnum}} & \meta{num}\OR\tt /\meta{incrref}/ & increment number for |\resetincr|,
                                                                                         |\fromincr|, |\incrlabel| \\  
   \meta{incr} & \tt /\meta{incrref}/ & = \ttx{value\{\meta{incrref}\}} (including \offset)\\
