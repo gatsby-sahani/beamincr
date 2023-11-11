@@ -414,7 +414,7 @@ The general form of an increment reference is
     can be used to display only the final slide of a frame again:
     \cmd\againframe|</$/>{|\meta{frame label}|}|.  By combining with |^| it is
     possible to set a slide range at the first use and then automatically
-    follow the same range with subsequent \cmd\againframe calls. \example
+    follow the same range with subsequent \cmd\againframe\ calls. \example
 \begin{verbatim}
   \begin{frame}<2-5>[label=myframe] % only use slides 2-5 in this presentation
     ...
@@ -426,9 +426,9 @@ The general form of an increment reference is
 \end{verbatim}
 
   \item[\tt \string$*] \hypertarget{incrref$*}{}The highest numbered overlay in
-    the frame used so far.  This may be useful to continue the display of a
-    partially rendered frame, starting from the latest point reached in any
-    previous display.
+    the frame used so far.  This may be useful to have an
+    \cmd\againframe\ command continue to display a partially rendered frame,
+    starting from the latest overlay reached in any previous displays.
 
   \item[\tt \string@] \hypertarget{incrref@}{}The most recently displayed
     overlay number in the frame.  This may be useful to continue display
@@ -997,11 +997,11 @@ They will only be defined if \TikZ\ is also loaded in the document preamble.
 
 \begin{envwithcontents}{{incrementallayers}
     \oarg{node options}\optsarg{default specification}}
-  {\item \hskip1em \osarg{pre-next specification} \opt{\meta{pre-next contents}}
+  {\item \hskip1em \osarg{pre-next specification} \opt{\meta{pre-next \TikZ\ commands}}
     \item \ttx{\string\next}\osarg{next specification}\oarg{next node options}
-    \item \hskip1em \meta{next contents}
-    \item \ttx{\string\next}\osarg{next specification}\oarg{next node options}
-    \item \hskip1em \meta{next contents}
+    \item \hskip1em \meta{layer contents}
+    \item \ttx{\string\next*}\osarg{next specification}\oarg{scope options}
+    \item \hskip1em \meta{\TikZ\ commands}
     \item \hskip2em $\vdots$
   }
 
@@ -1015,41 +1015,46 @@ They will only be defined if \TikZ\ is also loaded in the document preamble.
     contents}, or \ttx{only@} actions in \meta{next specification}s; these
   should be used with care.
 
-  By default, nodes are set with |text width = \columnwidth, inner sep=0pt| so
-  that the text fills the width of the current frame or column or minipage.
-  They are aligned at their top borders.  These defaults can be overridden, and
-  arbitrary \TikZ\ options provided to the nodes, in one of three ways: by setting
-  options in the \ttx{incremental layer} \TikZ\ style, by placing them in the optional
-  \meta{node options} argument to the environment, or by placing them in the
-  optional \meta{next node options} after a \ttc\next, (and after any \meta{next
-    specification}).
+  By default, nodes are set with \ttx{text width=\ttc\columnwidth, inner
+    sep=0pt} so that the text fills the width of the current frame or column or
+  minipage.  They are aligned at their top borders.  These defaults can be
+  overridden, and arbitrary \TikZ\ options provided to the nodes, in one of
+  three ways: by setting options in the \ttx{incremental layer} \TikZ\ style, by
+  placing them in the optional \meta{node options} argument to the environment,
+  or by placing them in the optional \meta{next node options} after a \ttc\next
+  (and after any \meta{next specification}).
 
   Three shorthand node alignment keys are available: \ttx t aligns the nodes at
   their top edges (the default); \ttx{b} at their bottom edges and \ttx{c} at their
   centres.
 
   The entire environment is set within a single \ttx{tikzpicture}.  Any
-  \meta{pre-next contents} and the contents of any \ttc{\next*} are passed
-  directly to \TikZ.  The default origin of the coordinate system is the
-  \ttx{north}, \ttx{center} or \ttx{south} anchor points of the layer nodes for
-  \ttx t, \ttx c and \ttx b alignment respectively.  The nodes themselves are accessible
+  \meta{pre-next contents} and the contents of any \ttc{\next*} are interpreted
+  as \TikZ\ commands within that picture.  Each \ttc{\next*} sets its contents
+  within a \TikZ\ \ttx{scope} environment.  Options to this environment can be
+  provided by starting the contents (after any \ometa{next specification}) with
+  \oarg{scope options}.
+
+  The default origin of the \TikZ\ coordinate system is the \ttx{north},
+  \ttx{center} or \ttx{south} anchor points of the layer nodes for \ttx t, \ttx
+  c and \ttx b alignment respectively.  The nodes themselves are accessible
   under the names \ttx{(layer \meta{n})}, where \meta{n} is the corresponding
   value of the |next| counter.
-  %
-  The \TikZ\ option |fit layers| can be given to a node to surround all the layers
-  defined so far in the |incrementallayers| environment (see the \TikZ\ fit
-  library).
 
-  There is also a new environment called |boundinglayerscope| which creates a
-  \TikZ\ |scope| with the following additions.  A node called |(bounding layer)|
-  is created to (tightly) fit the layers defined so far, and the |xy| coordinate
-  system in the scope is redefined according to the alignment of the most recent
-  layer, or a |tcb| alignment option to \ttx{boundinglayerscope}.  The origin is
-  placed at the |north west|, |center| or |south west| of the bounding node, for
-  \ttx t, \ttx c, or \ttx b alignment respectively.  The \ttx x vector extends
-  horizontally to the east border of the bounding node, while \ttx y extends
-  vertically to the opposite side (or top for \ttx c alignment).
-
+  The following special options can be given within \ttc{\next*} scope options.
+  \begin{description}
+  \item[\tt t\OR c\OR b] These options do not alter anything by themselves.
+    However, subsequent calls to the options below will behave differently for
+    different alignment keys.  The default value is the alignment of the most
+    recent layer node.
+  \item[\tt layer xy] Set the \ttx{xy} coordinate system to span the bounding box of
+    the layers rendered so far.  The origin depends on the alignment of the most
+    recent layer, or a \ttx{t\OR c\OR b} alignment option to the \ttc{\next*}
+    scope.  The origin is placed at the \ttx{north west}, \ttx{center} or
+    \ttx{south west} of the bounding node, for \ttx t, \ttx c, or \ttx b
+    alignment respectively.  The \ttx x vector extends horizontally to the east
+    border of the bounding node, while \ttx y extends vertically to the opposite
+    side (or top for \ttx c alignment).
   \begin{center}
   \begin{tikzpicture}[box/.style={draw, minimum width=6em, minimum height=6em},font={\tt\small}]
     \node[box] (t) {bounding layer};
@@ -1087,6 +1092,10 @@ They will only be defined if \TikZ\ is also loaded in the document preamble.
     \end{scope}
   \end{tikzpicture}
   \end{center}
+  
+  \item[\tt layer grid] Draw a grid within the current \ttx{layer xy} coordinates.
+    Fine grid lines are 0.1 units apart.  Heavier lines are placed at full units.
+  \end{description}
 
   
 \end{envwithcontents}
@@ -1102,9 +1111,9 @@ They will only be defined if \TikZ\ is also loaded in the document preamble.
 After an incremental environment has been defined, the special label
 \ttx{next\,+} evaluates to the increment associated with the next \ttc\next: or,
 more precisely, to the smallest \ttx{/next\,\meta{n}/} that is strictly greater
-than the current increment and to the largest of them if none are larger.  This
-label can be used to easily synchronise later incremental environments to a
-first one, even if each \ttc\next\ step involves multiple increments.  \example
+than the current increment or to 0 if none are larger.  This label can be used
+to easily synchronise later incremental environments to a first one, even if
+each \ttc\next\ step involves multiple increments.  \example
 \begin{verbatim}
   \begin{<>}
   \next first line \onslide<+->{with an addendum}\\
@@ -1566,7 +1575,7 @@ its original behaviour.  You have been warned.
   the contents is copied to the output.
 \end{command}
 
-\begin{commandalt}[pointer (tikz option)]{{pointer}\opt{=}\oarg{pointer node options}\opt{\meta{angle}}}{}
+\begin{commandalt}[pointer (tikz option)]{{tikz option: pointer}\opt{=}\oarg{pointer node options}\opt{\meta{angle}}}{}
   This is a \TikZ\ option that can be passed to a \ttx{node} to insert a
   pointer drawn towards the node whenever an enclosing \cmd\point\ command or
   action is active.  If an \meta{angle} is specified, the pointer is drawn
@@ -1664,15 +1673,18 @@ mechanism, but that's a project for another day.
 
 \subsection{Graphical alerts}\label{sec:attention:glerts}
 
-If \TikZ\ is loaded, \beamincr\ defines various graphical alerts or
-\ttx{glerts}.  The argument to be alerted is set within an inline \TikZ\ node
-aligned with the baseline of the surrounding line, with a tight bounding box.  A
-second node or associated path is used to add the graphical embellishment. (More
-details of the construction are given in \cref{sec:attention:glerts:refining}
-below.)  Glerts can be used to draw attention at specific increments, or simply
-to highlight material on the slide in a static fashion.
+If \TikZ\ is loaded, \beamincr\ defines various styles of graphical alerts or
+\ttx{glerts}, and provides a facility to define more.  The argument to be
+alerted is set within an inline \TikZ\ node with a tight bounding box, aligned
+with the baseline of the surrounding line of text.  A second node or associated
+path is used to add the graphical embellishment. (More details of the
+construction are given in \cref{sec:attention:glerts:refining}.)  Glerts can be
+used to draw attention at specific increments, or simply to highlight material
+on the slide in a static fashion.
 
 \subsubsection{Glert commands}\label{sec:attention:glerts:cmds}
+
+The following commands are used to insert and control the activation of glerts.
 
 \begin{command}{\useglert\{\meta{style}$_1$\opt{=\meta{options}},
     \opt{\meta{style}$_2$=\meta{options}}, \oarg{further options}\}}
@@ -1701,7 +1713,7 @@ to highlight material on the slide in a static fashion.
   unalerted within a \TikZ\ node.
 \end{command}
 
-\begin{command}{\glert*\oarg{options}\marg{argument contents}}%
+\begin{command}{{\glert*}\oarg{options}\marg{argument contents}}%
   {apply a graphical alert to \meta{argument contents} when activated}
   %
   Executes \ttc\glert\oarg{options}\marg{argument contents}, with the active or
@@ -1721,11 +1733,25 @@ to highlight material on the slide in a static fashion.
 \end{commandalt}
 
 
+\subsubsection{Glerts and modes}\label{sec:attention:glerts:modes}
+
+Ordinarily, glerts remain inactive in all except \ttx{beamer} mode.  To include
+an active glert in (say) \ttx{handout} mode, include the mode spec
+\ttx{<handout>} or \ttx{<handout:*>} within the \meta{spec} passed to
+\cmd\glert.  The same options can can be included in the spec of an explicit
+\cmd\glerts\ command.  To activate \cmd{glert*}s implicitly from an enclosing
+action, use \ttx{<handout:glerts@*>}.
+
+Alternatively, when using \cmd\handoutframe, specific overlays can be included
+within the handout (or other mode) output rendered as they would be in
+\ttx{beamer} mode.
+
+
 \subsubsection{Built-in glert styles}\label{sec:attention:glerts:builtin}
 
 A few \ttx{glert} styles are predefined.  Each displays the text in the same
-style as surrounding text when inactive.  Their actions when activated are as
-follows.
+style as the surrounding material when inactive.  Their actions when activated
+are as follows.
 \begin{description}
 \item[\tt null] Do nothing, even when activated.
 
@@ -1748,25 +1774,41 @@ follows.
 \item[\tt spotlight=\ometa{color, \dots}] Draw a fading ellipse underneath the text in
   partly transparent red or \meta{color}.
 
-\item[\tt connect=\{\oarg{to options} (\meta{target})\}] Draw a (red, very
-  thick, double-headed arrow) line to the glert (or other \TikZ\ node) named
-  \meta{target}.  The picture containing the node must have the \ttx{remember
-    picture} option; this is always the case for glerts.  The \ometa{to options}
-  can modify the shape of the path.  The style can be changed with
-  \ttx{path=\marg{options}}.
+\item[\tt connect=\{\oarg{to options} \meta{target}\}] Draw a [red, very thick,
+  double-headed arrow] line to the \TikZ\ coordinate \meta{target}.  This could
+  be a \ttx{(\meta{glert name})} (see \cref{sec:attention:glerts:names}).  If it
+  is the name of a node in another \TikZ\ picture, that picture must have the
+  \ttx{remember picture} option set; this is always the case for glerts.
 
-\item[\tt callout=\{\oarg{callout node options}\meta{angle}:\meta{callout text}]
+  The \ometa{to options} can be used to modify the shape of the path.  The style
+  of the line can be changed by specifying \ttx{path=\marg{options}} within the
+  \ometa{further options} of the \cmd\glert\ttx{[*]} command.
+
+\item[\tt callout=\{\oarg{callout node options}\meta{angle}:\meta{callout text}\}]
+
   Draw a callout node containing \meta{callout text} pointing to the glert node
-  from \meta{angle} (may be a direction keyword).  The default callout is
-  rectangular and placed at a centre-to-centre distance 2.5 times greater than
-  that from the glert node centre to its edge.  The \ometa{callout node options}
-  can change its appearance, and placement (in particular, the \ttx{pos} option
-  modifies the scaling relative to the glert node size).
-  
+  from \meta{angle} (may be a direction keyword).
+
+  The default callout is rectangular and placed at a centre-to-centre distance 2.5 times the glert
+  node ``radius'': i.e., the distance from centre to edge in the direction of \meta{angle}.
+
+  The \ometa{callout node options} can be used to change the callout appearance
+  and placement.  In particular, the \ttx{pos=\meta{scale}} option modifies the
+  position scale relative to the glert node ``radius'', and
+  \ttx{sep=\meta{dimen}} adds a further offset.  If \meta{angle} is a a keyword,
+  \ttx{pos} moves along the corresponding direction defined by the glert node
+  shape, whereas \ttx{sep} moves in the corresponding absolute direction
+  (e.g. $45^\circ$ for \ttx{north east}).
+
+  Options can be set for all callouts using the \ttx{glert callout options}
+  style.  Initially, this sets the defaults of \ttx{\{rectangle callout, draw,
+    pos=2.5, sep=0pt\}}.
 \end{description}
 In the \ometa{color, \dots} arguments, a colour name (as defined by the
-\ttx{xcolor} package) can generally be followed by other line or node options.
-These can also be set as separate options as described in
+\ttx{xcolor} package) can generally be followed by other line or node options
+placed (along with the colour) in braces.  Such options should take precedence
+over any default style, and over any options not grouped with the \meta{color}
+argument.  The other ways to set options are described in
 \cref{sec:attention:glerts:refining}.
 
 Multiple styles can be used together.  It they set conflicting parameters
@@ -1776,52 +1818,85 @@ prevail.
 
 \subsubsection{Naming glerts}\label{sec:attention:glerts:names}
 
-The name of the glert node can be set with the option
-\ttx{node=\{name=\meta{name}\}}, or, more simply, \ttx{(\meta{name})}.  The node
-can then be referenced by a \ttx{connect} glert, or from another \TikZ\ picture
-(remembering to use \ttx{remember picture} and \ttx{overlay} as appropriate).
-
+The name of the glert node can be set within the \cmd\glert\ttx{[*]} options
+with \ttx{node=\{name=\meta{name}\}}, or, more simply, \ttx{(\meta{name})}.  The
+node can then be referenced by a \ttx{connect} glert, or from another
+\TikZ\ picture (remembering to use \ttx{remember picture} and \ttx{overlay} as
+appropriate).
+ 
 
 \subsubsection{Glerts in math mode}\label{sec:attention:glerts:math}
 
 Glert commands generally process math mode material transparently.  In
 particular, there is no need to restore the math mode or style explicitly within
-the argument as there would be with other boxed commands.  However,
+the argument as there would be with most other boxed commands.  However,
 \TeX\ internals mean that to achieve this transparency, both the maths material
-and associated glert drawing must be rendered interally four times (for each of
-the four maths styles), with only one rendering being placed on the output page.
+and associated glert drawing must be rendered internally four times (in each of
+the four main maths styles), with only one rendering then being placed on the
+output page.
 
-Although this requirement can increase compile time, the consequences are
-generally acceptable.  However, it does create a difficulty when using named
-glerts (say, with the \ttx{connect} glert style).  The same name is associated
-with all four nodes in turn, finally being assigned to the
-\ttc\scriptscriptstyle\ version.  If that isn't the one that is used in the
-final layout, then the name ends up being associated with the bottom corner of
-the page.
+Although the added compilation induced by this quirk is generally acceptable,
+there is one context in which it creates a real difficulty.  If a named glert is
+to be referenced (say, with the \ttx{connect} glert style), the same name is
+associated with all four nodes in turn, ending with the
+\ttc\scriptscriptstyle\ version.  If the \ttc\scriptscriptstyle\ version isn't
+the one used in the final layout, then \TikZ\ treats the final named node as
+though it were in the bottom left corner of the page.
 
-Thus, \beamincr\ makes it possible to specify the correct mathstyle explicitly,
-shortcircuiting the need for the four versions.  This is done by placing the
-style instruction as the \emph{first} token in the \ometa{options} to the
-\cmd\glert\ttx{[*]} command.  If a \meta{glert style} or additional options are
-to be provided, these must follow.  They can be separated from the mathstyle
-command by a comma, but this is not necessary.
+To work around this issue \beamincr\ makes it possible to specify the correct
+mathstyle explicitly, thus removing the need for the four versions.  This is
+done by placing the style instruction as the \emph{first} token in the
+\ometa{options} to the \cmd\glert\ttx{[*]} command.  If a \meta{glert style} or
+additional options are to be provided, these must follow.  They can be separated
+from the mathstyle command by a comma, but this is not necessary.
 
 \example
 \begin{verbatim}
-\begin{equation*}% simple, but naming issues, and possibly inefficient
+\begin{equation*}% simple, but naming issues
 \int_{\glert[(lo)]{-\infty}}^{\glert[(hi)]{+\infty}} e^{-i\omega t} d\omega = 2\pi\delta(t)
 \end{equation*}
 
-\begin{equation*}% contents rendered once in the specified style
+\begin{equation*}% contents rendered only once in the specified style
 \int_{\glert[\scriptstyle (lo)]{-\infty}}^{\glert[\scriptstyle (hi)]{+\infty}}
        e^{-i\omega t} d\omega = 2\pi\delta(t)
 \end{equation*}
 \end{verbatim}
 
-Note that math node namingdoesn't seem to work in \ttx{align} environments.
+Note that \ttx{align} environments also set their contents multiple times (to
+determine their sizes) and so glert naming doesn't work there either.  There's
+no workaround for this at the moment.
 
 
+\subsubsection{Glerts in \TikZ\ pictures}\label{sec:attention:glerts:tikz}
 
+Glerts can be applied to nodes in \TikZ\ pictures by setting the options below.
+In this use, no separate bounding box node is created.  Thus, the extent of the
+node itself (including any glert-based modifications to the node) will
+ordinarily contribute to the size of the picture.  However, any glert path
+additions will not, and so may extend outside the picture bounding box.
+
+\begin{commandalt}[glert (tikz option)]{{tikz option: glert}=\{\sarg{overlay spec}\oarg{options}\}}
+  {option to \ttx{node} to apply a graphical alert on \meta{overlay spec}}
+  %
+  This option can be given to a \TikZ\ node, to apply a glert specification
+  according to \meta{overlay spec}.  If no overlay specification is given, it is
+  applied on all overlays.  The \meta{options} can specify glert styles or other
+  options, as in the \cmd\glert\ command.
+\end{commandalt}
+
+\begin{commandalt}[glert* (tikz option)]{{tikz option: glert*}=\{\oarg{options}\}}
+  {option to \ttx{node} to apply a graphical alert when activated}
+  %
+  This option can be given to a \TikZ\ node, to apply the glert specification
+  when an enclosing \cmd\glerts\ command or action is active.  The
+  \meta{options} can specify glert styles or other options, as in the
+  \cmd{\glert*}\ command.
+\end{commandalt}
+
+More than one \ttx{glert} and \ttx{glert*} option can be given to the same node,
+potentially applying different glerts on different overlays.  Note, though, that
+glert specifications set by earlier \ttx{glert[*]}s will become the default for
+later ones.
 
 
 \subsubsection{Refining the glert appearance}\label{sec:attention:glerts:refining}
@@ -1848,20 +1923,21 @@ can be set in two ways.  The first is to provide the following option within
 \cmd\useglert\ or \cmd\glert\ttx{[*]} options, following any glert style
 declaration:
 %
-\begin{commandalt}[<object> <state> (tikz option)]{{option:\meta{object} \ometa{state}}=\marg{options}}
+\begin{commandalt}[<object> <state> (glert option)]
+  {{glert option: \meta{object} \ometa{state}}=\marg{options}  }
   {in \ttc\useglert\ or \ttc\glert \ttx{[*]}, modify glert;
     \meta{object}=\ttx{picture\OR bbox\OR node\OR path}, \meta{state}=\ttx{active\OR inactive}}
 %
-  \meta{object}=\ttx{picture\OR bbox\OR node\OR path}; \meta{state}=\ttx{active\OR inactive}
+  \declare{\meta{object}}=\ttx{picture\OR bbox\OR node\OR path}; \ometa{state}=\ttx{active\OR inactive}
 
-  This option must be placed within the argument to a \cmd\useglert\ or the
-  options to \cmd\glert\ or \cmd{\glert*}.  It appends the \meta{options} to the
-  \ttx{glert \meta{object} \meta{state}} style, thus modifying its appearance.
-  If \meta{state} is omitted it is taken to be \ttx{active}.
+  These options may be used within the argument to a \cmd\useglert\ or the
+  options to \cmd\glert\ or \cmd{\glert*}.  Each will append \meta{options} to
+  the \ttx{glert \meta{object} \meta{state}} style, thus modifying its
+  appearance.  If \meta{state} is omitted it is taken to be \ttx{active}.
 
   If called within \cmd\useglert, the changes will last until the next
   \cmd\useglert\ call, but will not apply to any \cmd\glert\ttx{[*]}s that set
-  and explicit style.  Options within \cmd\glert\ttx{[*]}\ are local to that
+  an explicit style.  Options within \cmd\glert\ttx{[*]}\ are local to that
   instance.
 
   (It is also possible to append to the \ttx{glert \meta{object} \meta{state}} style
@@ -1873,19 +1949,18 @@ Longer lasting modifications can be achieved by altering glert-style-specific
 \TikZ\ styles.  
 
 \begin{commandalt}[glert <glert style> <object> <state> (tikz option)]
-  {{option:glert \meta{glert style} \meta{object} \meta{state}/.append
+  {{tikz option: glert \meta{glert style} \meta{object} \meta{state}/.append
       style}=\marg{options}}{modify \meta{glert style} appearance}
   %
-  \meta{object}=\ttx{picture\OR bbox\OR node\OR path}; \meta{state}=\ttx{active\OR inactive}
+  \declare{\meta{object}}=\ttx{picture\OR bbox\OR node\OR path}; \declare{\meta{state}}=\ttx{active\OR inactive}
   
   Modify the options of \meta{object} in the active or inactive \meta{state} of
-  \meta{glert style} glerts.  This option can be set within \ttc\tikzset,
-  \cmd\useglert, or \cmd\glert\ttx{[*]}.  In the first two cases it applies
-    throughout the current \TeX\ block.  In the latter, it applies just to the
-    glert in question (and so is effectively just a more verbose version of the
-    option above---with the exception of subtle effects possible when applying
-    multiple \meta{glert style}s.)
-    \example
+  \meta{glert style} glerts.  These options can be set within \ttc\tikzset,
+  \cmd\useglert, or \cmd\glert\ttx{[*]}.  In the first two cases, the effect
+  will apply throughout the current \TeX\ block.  In the latter, it applies just
+  to the glert in question (and so is effectively just a more verbose version of
+  the option above).
+  \example
 \begin{verbatim}
 \tikzset{glert box node active/.append style={inner sep=4pt}}
 \end{verbatim}
@@ -1901,13 +1976,12 @@ Thus, the extra space above could be added within a \cmd\glert\  more simply.
 \glert{box, inner sep=4pt}{text}
 \end{verbatim}
 In this case, the \ttx{inner sep=4pt} option would apply to all nodes within the
-picture: however the \ttx{bbox} node sets its own default explicitly and so will
-be unaffected.  If you want to increase the space reserved for the text, use
+picture: however the \ttx{bbox} node sets its own value to 0pt explicitly and so
+will be unaffected.  To also increase the space reserved for the glert, use
 \example
 \begin{verbatim}
-\glert{box, bbox={inner sep=4pt}}{text}
+\glert{box, inner sep=4pt, bbox={inner sep=4pt}}{text}
 \end{verbatim}
-instead.
 
 \subsubsection{Defining new glerts}\label{sec:attention:glerts:defining}
 
@@ -1932,7 +2006,7 @@ instead.
 \begin{command}{\defineglertpath\marg{glert style}\marg{state}\marg{tikz path commands}}
   {define a path for the glert}
   %
-  Add the following option to the \meta{glert style} node \meta{state} style:\\[1ex]\ttx{
+  Add the following option to the \meta{glert style} \ttx{node} \meta{state} style:\\[1ex]\ttx{
   append after command=\{\ttc\pgfextra \ttc\path [glert path \meta{state}] \meta{tikz path commands};\ttc\endpgfextra\}
   }\\[1ex]%
   %
@@ -1944,34 +2018,74 @@ instead.
   \begin{description}
   \item[\ttc\glertnode] refers to the glert node
   \item[\ttc\glertbbox] refers to the glert bbox node
-  \item[\ttc\glerttextraw] returns the argument text passed to the glert
-  \item[\ttc\glerttextbox] displays the argument text set within a \TeX\ box
-  \item[\ttc\glertphantom] renders an empty box of the same size as \ttc\glerttextbox
-  \item[\ttc\glerttextwidth] the width of the text box
-  \item[\ttc\glerttextheight] the height of the text box above the baseline
-  \item[\ttc\glerttextdepth] the depth of the text box below the baseline
+  %\item[\ttc\glerttextraw] returns the argument text passed to the glert
+  %\item[\ttc\glerttextbox] displays the argument text set within a \TeX\ box
+  %\item[\ttc\glertphantom] renders an empty box of the same size as \ttc\glerttextbox
+  %\item[\ttc\glerttextwidth] the width of the text box
+  %\item[\ttc\glerttextheight] the height of the text box above the baseline
+  %\item[\ttc\glerttextdepth] the depth of the text box below the baseline
   \end{description}
 \end{command}
 
-Here are the definitions of some of the builtin glert styles:
+\begin{commandalt}[glert angle parser (tikz option)]{{tikz option: glert angle parser}=\{\oarg{options}\meta{angle}:\meta{target}\}}{}
+
+  This option is designed to accept a label-type argument to a glert and parse
+  it into components that can be used by later options or glert paths.  It also
+  installs two options for local use within \meta{options}: \ttx{pos=\meta{pos}}
+  and \ttx{sep=\meta{sep}}.
+
+  The effect is such that after parsing and evaluation of \meta{options} (for
+  \ttx{pos} and \ttx{sep}) the following \TikZ\ options and commands are available :\\[1ex]%
+  \ttx{
+    glert angle options/.style={\meta{options}}\\
+    glert angle=\meta{angle}\\
+    glert angle target=\meta{target}\\
+    glert angle pos=\meta{pos}\\
+    glert angle sep=\meta{sep}\\
+    \ttc\def\ttc\glertangleoptions\{\meta{options}\}\\
+    \ttc\def\ttc\glertangle\{\meta{angle}\}\\
+    \ttc\def\ttc\glertangletarget\{\meta{target}\}\\
+    \ttc\def\ttc\glertanglepos\{\meta{pos}\}\\
+    \ttc\def\ttc\glertanglesep\{\meta{sep}\}\\
+    \ttc\def\ttc\glertangleplace\{(\$(\ttc\glertnode.center)!\ttc\glertanglepos!(\ttc\glertnode.\ttc\glertangle)\\
+    \hspace*{12em} + (\ttc\glertangle:\ttc\glertanglesep)\$)\}
+  }\\[1ex]
+  The final command defines a coordinate (\meta{pos} * \ttc\glertnode\ ``radius'' + \meta{sep}) away
+  from the centre of \ttc\glertnode\ in the direction \meta{angle}.
+\end{commandalt}
+
+Here are the definitions of some builtin glert styles:
 \begin{verbatim}
 \makeglertstyle{alert}
   \defineglertstyle{alert}{node}{active}[red]{text=#1}
 \makeglertstyle{box}
-  \defineglertstyle{box}{node}{active}[red]{draw=#1,very thick}
+  \defineglertstyle{box}{node}{active}[red]{very thick, draw=#1}
 \makeglertstyle{ellipse}
-  \defineglertstyle{ellipse}{node}{active}[red]{ellipse,draw=#1}
+  \defineglertstyle{ellipse}{node}{inactive}{ellipse}
+  \defineglertstyle{ellipse}{node}{active}[red]{ellipse, very thick, draw=#1}
 \makeglertstyle{highlight}
-  \defineglertstyle{highlight}{node}{active}[red]{fill=#1,fill opacity=0.2,text opacity=1}
+  \defineglertstyle{highlight}{node}{active}[red]{fill opacity=0.2, text opacity=1, fill=#1}
 \makeglertstyle{uline}
   \defineglertpath{uline}{active}{(\glertnode.south east) -- (\glertnode.south west)}
   \defineglertstyle{uline}{path}{active}{draw,red,very thick,#1}
 \makeglertstyle{spotlight}
-  \defineglertstyle{spotlight}{node}{active}{ellipse,fill=red,path fading=spotlight,#1}
+  \defineglertstyle{spotlight}{node}{active}[red!50]{ellipse,path fading=spotlight,fill=#1}
+  \defineglertstyle{spotlight}{node}{inactive}{ellipse}
 \makeglertstyle{connect}
   \defineglertpath{connect}{active}{(\glertnode) to #1}
-  \defineglertstyle{connect}{path}{active}{overlay,draw,red,very thick,<->}
+  \defineglertstyle{connect}{path}{active}{draw,red,very thick,<->}
+\makeglertstyle{callout}
+  \tikzset{glert callout options/.style={rectangle callout, draw, pos=2.5, sep=0pt}}
+  \defineglertpath{callout}{active}{
+    node[glert angle parser={#1}, glert callout options, glert angle options, at=\glertangleplace,
+         callout absolute pointer=(\glertnode.\glertangle), node contents={\glertangletarget}]}
 \end{verbatim}
+Wherever appropriate, the argument \ttx{\#1} is applied at the end of the
+options list.  This ensures that any options passed directly to the glert style
+will override the defaults that come before.  Glerts that use a shaped node also
+apply the shape when inactive, so as to avoid ``bouncing'' caused by bounding
+box changes when used within a \TikZ\ picture (when there is no separate bbox
+node; \cref{sec:attention:glerts:tikz}).
 
 \section{Selectively repeating frames}\label{sec:again}
 \locsection{Selectively repeating frames}
@@ -2029,16 +2143,16 @@ defined.  If running a recent \LaTeX\ compiler (post 2021) the command
   {scan the current frame without producing output in \meta{modes}}
   %
   Scan the current frame without producing any output.  This is similar to a
-  \ttx{<mode:0>} specification to \ttc{\begin\{frame\}}, but as the frame is still
-  scanned it allows side effects such as increment label definitions.  The
+  \ttx{<mode:0>} specification to \ttc{\begin\{frame\}}, but as the frame is
+  still scanned it allows side effects such as increment label definitions.  The
   \cmd\framescanonly\ command should be placed inside the frame contents.  It is
-  only available in recent versions of \LaTeX\ with hook support; a warning is
-  printed in other cases.  If used in \ttx{beamer} mode the frame will be
-  reprocessed for every overlay.  This behaviour can be avoided by also
+  only available in recent versions of \LaTeX\ with extended hook support; a
+  warning is printed in other cases.  If used in \ttx{beamer} mode the frame
+  will be reprocessed for every overlay.  This behaviour can be avoided by also
   including a \ttx{<beamer:1>} or \ttx{<beamer:-1>} (but not \ttx{<beamer:0>}!)
-  or equivalent specification to \ttc{\begin\{frame\}}. although it may be useful to
-  fully expand advanced increment references when increments are reset (see
-  \cref{sec:actions:advanced}).
+  or equivalent specification to \ttc{\begin\{frame\}}. although it may be
+  useful to fully expand advanced increment references when increments are reset
+  (see \cref{sec:actions:advanced}).
 
   The command has no effect when the frame is recalled with \cmd\againframe\ or
   \cmd\handoutframe, allowing both commands to render the frame contents.  If it
@@ -2136,8 +2250,8 @@ see also \cmd\beamincrdebug\ below).
 \subsection{Interface with \beamer\ internals}\label{sec:internals:beamer}
 
 Many \beamincr\ extensions work to pre-process material before passing it to
-standard \beamer\ or other commands.  This section details the few cases were
-it is necessary to interface with \beamer\ internals.
+standard \beamer\ or other commands.  This section details the few cases where
+it proved necessary to interface directly with \beamer\ internals.
 
 As described above, increment control is achieved by reading or setting the
 \ttx{beamerpauses} counter.  The user-visible increment number corresponds to
