@@ -341,6 +341,7 @@
 \def\alert{\@ifstar{\@alert@star}{\@alert@orig}}
 \newcommand<>\alerts[1]{{\@alerts@activate{#2}#1}}%
 \newenvironment<>{alertsenv}{\@alerts@activate{#1}}{\ignorespacesafterend}
+\let\@alertnow=\relax
 \def\@alerts@activate#1{\alt#1{\let\@alertnow=\@alert@orig}{\let\@alertnow=\relax}}
 \def\@alert@star#1{\@alertnow{#1}}
 
@@ -1155,7 +1156,7 @@
 }
 % define an glert path (appended to node) #1 - glert; #2 - (in)active; #3 - path
 \def\defineglertpath#1#2#3{%
-  \defineglertstyle@store{#1}{node}{#2}[]{append after command={\pgfextra \path [glert?path] #3;\endpgfextra}}%
+  \defineglertstyle@store{#1}{node}{#2}[]{append after command={\pgfextra \path [overlay,glert?path] #3;\endpgfextra}}%
 }
 
 % the null glert style clears all the styles
@@ -1172,27 +1173,61 @@
 }
 \pgfkeys{/glert/null/.forward to=/tikz/glert null}%
 
+% parse [opt]angle:target values (for callouts, labels, etc)
+\tikzset{
+  glert angle parser/.code={\@glert@angle@parser@chkopt#1::X},
+  glert angle/.initial=0,
+  glert angle target/.initial={},
+  glert angle pos/.initial=1,
+  glert angle sep/.initial=0pt,
+}
+\def\@glert@angle@parser@chkopt{\@ifnextchar[{\@glert@angle@parser}{\@glert@angle@parser[]}}
+\def\@glert@angle@parser[#1]#2:#3:#4X{%
+  \@ifempty{#3}{\@ifempty{#4}%
+    {\@glert@angle@parser@do[#1]{}{#2}}%  []foo
+    {\@glert@angle@parser@do[#1]{#2}{}}%  []foo:
+  }{\@glert@angle@parser@do[#1]{#2}{#3}}% []foo:bar
+}
+\def\@glert@angle@parser@do[#1]#2#3{\pgfkeysalso{
+    glert angle options/.style={#1},
+    glert angle=#2,
+    glert angle target=#3,
+    glert angle options/.get=\glertangleoptions,
+    glert angle/.get=\glertangle,
+    glert angle target/.get=\glertangletarget,
+    % after parser called, 'pos' is overridden to set glert angle pos
+    pos/.style={glert angle pos=##1,glert angle pos/.get=\glertanglepos},
+    sep/.style={glert angle sep=##1,glert angle sep/.get=\glertanglesep},
+}}
+\def\glertangleplace{($(\glertnode.center)!\glertanglepos!(\glertnode.\glertangle) + (\glertangle:\glertanglesep)$)}
+
 % define some basic glert styles
-\makeglertstyle{alert}\defineglertstyle{alert}{node}{active}[red]{text=#1}
-\makeglertstyle{box}\defineglertstyle{box}{node}{active}[red]{draw=#1,very thick}
-\makeglertstyle{ellipse}\defineglertstyle{ellipse}{node}{active}[red]{ellipse,draw=#1}
-\makeglertstyle{highlight}\defineglertstyle{highlight}{node}{active}[red]{fill=#1,fill opacity=0.2,text opacity=1}
-\makeglertstyle{uline}\defineglertpath{uline}{active}{(\glertnode.south east) -- (\glertnode.south west)}
-     \defineglertstyle{uline}{path}{active}{draw,red,very thick,#1}
+\makeglertstyle{alert}
+  \defineglertstyle{alert}{node}{active}[red]{text=#1}
+\makeglertstyle{box}
+  \defineglertstyle{box}{node}{active}[red]{very thick,draw=#1}
+\makeglertstyle{ellipse}
+  \defineglertstyle{ellipse}{node}{inactive}{ellipse}
+  \defineglertstyle{ellipse}{node}{active}[red]{ellipse,very thick,draw=#1}
+\makeglertstyle{highlight}
+  \defineglertstyle{highlight}{node}{active}[red]{fill opacity=0.2,text opacity=1,fill=#1}
+\makeglertstyle{uline}
+  \defineglertpath{uline}{active}{(\glertnode.south east) -- (\glertnode.south west)}
+  \defineglertstyle{uline}{path}{active}{draw,red,very thick,#1}
 \providecommand\tikzfading[1][]{}% do nothing if fading library not loaded
 \tikzfading[name=spotlight,inner color=transparent!0, outer color=transparent!100]
-\makeglertstyle{spotlight}\defineglertstyle{spotlight}{node}{active}{ellipse,fill=#1,path fading=spotlight}
-\makeglertstyle{connect}\defineglertpath{connect}{active}{(\glertnode) to #1}
-     \defineglertstyle{connect}{path}{active}{overlay,draw,red,very thick,<->}
-
-\def\@glert@calloutpos{2.5}
-\def\@glert@callout@parser@chkopt{\@ifnextchar[{\@glert@callout@parser}{\@glert@callout@parser[]}}
-\def\@glert@callout@parser[#1]#2:#3X{\pgfkeysalso{
-    pos/.store in={\@glert@calloutpos}, #1,
-    at=($(\glertnode.center)!\@glert@calloutpos!(\glertnode.#2)$),
-    callout absolute pointer=(\glertnode.#2), node contents={#3}}}
-\tikzset{glert callout parser/.code={\@glert@callout@parser@chkopt#1X}}
-\makeglertstyle{callout}\defineglertpath{callout}{active}{node[rectangle callout, draw, glert callout parser={#1}]}
+\makeglertstyle{spotlight}
+  \defineglertstyle{spotlight}{node}{active}[red!50]{ellipse,path fading=spotlight,fill=#1}
+  \defineglertstyle{spotlight}{node}{inactive}{ellipse}
+\makeglertstyle{connect}
+  \defineglertpath{connect}{active}{(\glertnode) to #1}
+  \defineglertstyle{connect}{path}{active}{draw,red,very thick,<->}
+\tikzset{glert callout options/.style={rectangle callout, draw, pos=2.5, sep=0pt}}
+\makeglertstyle{callout}
+  \defineglertpath{callout}{active}{%
+       node[glert angle parser={#1}, glert callout options,  glert angle options, at=\glertangleplace,
+                callout absolute pointer=(\glertnode.\glertangle), node contents={\glertangletarget}]
+     }
 
 % trigger reset on installation of first glert style from options (but no reset if there aren't any styles)
 \newif\if@resetoninstall
@@ -1237,12 +1272,25 @@
 
 % set glerts
 \newcommand\glert{\@ifstar{\@glert@star}{\@glert}}
-\newenvironment<>{glertenv}{\@glertsactivate{#1}}{\ignorespacesafterend}% glertenv is the same as glertsenv
-\newcommand<>\glerts[1]{{\@glertsactivate{#2}#1}}% group to prevent \glert* activation out of scope
-\newenvironment<>{glertsenv}{\@glertsactivate{#1}}{\ignorespacesafterend}% environment groups for us
+\newenvironment<>{glertenv}{\@glertsactivate#1}{\ignorespacesafterend}% glertenv is the same as glertsenv
+\newcommand<>\glerts[1]{{\@glertsactivate#2#1}}% group to prevent \glert* activation out of scope
+\newenvironment<>{glertsenv}{\@glertsactivate#1}{\ignorespacesafterend}% environment groups for us
+
+% glert[*] style for nodes
+\tikzset{glert/.code={\@glert@nodeoption@spec#1X}}
+\def\@glert@nodeoption@spec{\@ifnextchar<{\@glert@nodeoption}{\@glert@nodeoption<*>}}
+\def\@glert@nodeoption<#1>#2X{\@glertsactivate<#1>\pgfkeysalso{glert*={#2}}}
+\tikzset{glert*/.code={%
+    \pgfqkeys{/glert}{reset,#1}%
+    \pgfkeysalso{alias=@glertnode, alias=@glertbbox,  glert?node}
+}}
+% can't work out how to put these in narrower scope!
+\def\glertbbox{@glertbbox}%
+\def\glertnode{@glertnode}%
+
 
 % internals
-\newcommand<>\@glert[2][]{{\@glertsactivate{#3}\@glert@star[#1]{#2}}} % group to restrict activation
+\newcommand<>\@glert[2][]{{\@glertsactivate#3\@glert@star[#1]{#2}}} % group to restrict activation
 \newcommand\@glert@star[2][]{%
   \ifmmode\@glert@set@node@mathcheck#1,X{#2}\else\@glert@set@node{}{}[#1]{#2}\fi
 }
@@ -1288,14 +1336,21 @@
 }
 
 % activate styles switch from inactive to active
-\def\@glertsactivate#1{%
-  \alt#1{\tikzset{glert?picture/.style={glert picture active}}}{\tikzset{glert?picture/.style={glert picture inactive}}}%
-  \alt#1{\tikzset{glert?bbox/.style={glert bbox active}}}{\tikzset{glert?bbox/.style={glert bbox inactive}}}%
-  \alt#1{\tikzset{glert?node/.style={glert node active}}}{\tikzset{glert?node/.style={glert node inactive}}}%
-  \alt#1{\tikzset{glert?path/.style={glert path active}}}{\tikzset{glert?path/.style={glert path inactive}}}%
+\def\@glertsactivate<#1>{%
+  \alt<handout:0|trans:0|article:0|#1>{%
+    \tikzset{glert?picture/.style={glert picture active}}%
+    \tikzset{glert?bbox/.style={glert bbox active}}%
+    \tikzset{glert?node/.style={glert node active}}%
+    \tikzset{glert?path/.style={glert path active}}%
+  }{%
+    \tikzset{glert?picture/.style={glert picture inactive}}%
+    \tikzset{glert?bbox/.style={glert bbox inactive}}%
+    \tikzset{glert?node/.style={glert node inactive}}%
+    \tikzset{glert?path/.style={glert path inactive}}%
+  }%
 }
 % start inactive
-\@glertsactivate{<0>}
+\@glertsactivate<0>
 
 
 %% 
@@ -1328,7 +1383,7 @@
 
 \long\def\@incremental@layer@cmd#1{%
   \iffirst[{#1}{\@incremental@layer@cmd@opt#1X}{\@incremental@layer@cmd@opt[]#1X}
-  }
+}
 \long\def\@incremental@layer@cmd@opt[#1]#2X{%
   \xdef\@incremental@layer@list{\@incremental@layer@list (layer \thenext)}%
   \node(layer \thenext)[text width=\columnwidth,every layer, pointer=180,#1]{{#2}};
@@ -1352,3 +1407,10 @@
 }} %% end tikz-dependent extensions
 
 \catcode`X=11
+
+
+% Local Variables:
+% mode: latex
+% eval: (set-fill-column 80)
+% eval: (face-remap-add-relative 'default :family "Ubuntu Mono")
+% End:
