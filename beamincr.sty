@@ -822,6 +822,7 @@
 % default do commands do nothing
 \let\incremental@do\relax
 \let\incremental@do@prenext\relax
+\let\incremental@do@star\relax
 
 % for /next +/ label -- recurse to find first /next n/ > currentincr
 \def\@nextplus#1{%
@@ -855,7 +856,7 @@
 % check for starred \next => no command
 \newcommand\@incremental@next@chkstar{%
   \@ifstar%
-    {\@incremental@next@spec{\relax}{\beamer@defaultospec}}%
+    {\@incremental@next@spec{\incremental@do@star}{\beamer@defaultospec}}%
     {\@incremental@next@spec{\incremental@do}{\beamer@defaultospec}}%
 }
 
@@ -1361,6 +1362,7 @@
   % check if the optional arg contains an overlay spec,
   \iffirst<{#1}{\def\beamer@defaultospec{#1}}{\tikzset{incremental layer/.append style={#1}}}%
   \x@\long\x@\def\x@\incremental@do##1\@endnext{\@incremental@layer@cmd{##1}}%
+  \x@\long\x@\def\x@\incremental@do@star##1\@endnext{\@incremental@layer@cmd@star{##1}}%
   \Collect@Body\@incrementallayers%
 }{\ignorespacesafterend}
 \@incremental@env@angles{layers}
@@ -1389,20 +1391,37 @@
   \node(layer \thenext)[text width=\columnwidth,every layer, pointer=180,#1]{{#2}};
   % global options installed by every node style;  
 }
+\long\def\@incremental@layer@cmd@star#1{%
+  \begin{scope}#1\end{scope}
+}
 
-\usetikzlibrary{fit}
-\tikzset{fit layers/.style={fit=\@incremental@layer@list}}
+\tikzset{
+  layer xy t/.style={shift=(#1.north west), x=(#1.north east), y=(#1.south west)},
+  layer xy c/.style={shift=(#1.center), x=(#1.east), y=(#1.north)},
+  layer xy b/.style={shift=(#1.south west), x=(#1.south east), y=(#1.north west)},
+  layer xy/.code={\pgfkeysalso{layer xy \@incrementallayer@alignment=current bounding box}},
+% grids don't work with inverted xy coordinates dammit, so hack our own
+  layer grid t/.style={execute at begin scope={%
+      \draw[help  lines] \foreach \step in {0,0.1,...,1.001} {(0,\step) -- (1,\step) (\step,0) -- (\step,1)};
+      \draw[help  lines,thick] \foreach \step in {0,1} {(0,\step) -- (1,\step) (\step,0) -- (\step,1)};
+  }},
+  layer grid b/.style={execute at begin scope={%
+      \draw[help  lines] \foreach \step in {0,0.1,...,1.001} {(0,\step) -- (1,\step) (\step,0) -- (\step,1)};
+      \draw[help  lines,thick] \foreach \step in {0,1} {(0,\step) -- (1,\step) (\step,0) -- (\step,1)};
+  }},
+  layer grid c/.style={execute at begin scope={%
+      \draw[help  lines] \foreach \step in {-1,-0.9,...,1.001} {(-1,\step) -- (1,\step) (\step,-1) -- (\step,1)};
+    \draw[help  lines,thick] \foreach \step in {-1,0,1} {(-1,\step) -- (1,\step) (\step,-1) -- (\step,1)};
+  }},
+  layer grid/.code={\pgfkeysalso{layer grid \@incrementallayer@alignment}}
+}
 
-\tikzoption{bounding xy t}{\tikzset{shift=(#1.north west), x=(#1.north east), y=(#1.south west)}}
-\tikzoption{bounding xy c}{\tikzset{shift=(#1.center), x=(#1.east), y=(#1.north)}}
-\tikzoption{bounding xy b}{\tikzset{shift=(#1.south west), x=(#1.south east), y=(#1.north west)}}
-
-\newenvironment{boundinglayerscope}[1][]
-  {\node (bounding layer) [fit layers,inner sep=0pt]{};
-    % insert #1 twice: first allow layer alignment to be overridden, then to allow the xy coordinates
-    % to be changed
-    \begin{scope}[#1, bounding xy \@incrementallayer@alignment=bounding layer, #1]}
+\newenvironment{layerscope}[1][]
+  {% insert #1 twice: first allow layer alignment to be overridden, then to allow the xy coordinates to be changed
+    \begin{scope}[#1]}
   {\end{scope}}
+
+
 
 }} %% end tikz-dependent extensions
 
