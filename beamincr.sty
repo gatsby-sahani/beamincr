@@ -1215,6 +1215,9 @@
 \makeglertstyle{uline}
   \defineglertpath{uline}{active}{(\glertnode.south east) -- (\glertnode.south west)}
   \defineglertstyle{uline}{path}{active}{draw,red,very thick,#1}
+\makeglertstyle{sout}
+  \defineglertpath{sout}{active}{(\glertnode.west) -- (\glertnode.east)}
+  \defineglertstyle{sout}{path}{active}{draw,red,very thick,#1}
 \providecommand\tikzfading[1][]{}% do nothing if fading library not loaded
 \tikzfading[name=spotlight,inner color=transparent!0, outer color=transparent!100]
 \makeglertstyle{spotlight}
