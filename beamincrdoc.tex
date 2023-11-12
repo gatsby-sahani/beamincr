@@ -17,7 +17,7 @@
 \usepackage[left=2.25cm,right=2.25cm,top=2.5cm,bottom=2.5cm,nohead]{geometry}
 \usepackage{translator}
 
-\setcounter{tocdepth}{4}
+\setcounter{tocdepth}{6}        %used for pgfbookmarks
 
 %% more packages
 \usepackage{tabularx}
@@ -77,6 +77,13 @@
 
 
 \makeatletter
+% pop up a bookmark level -- this is copied from belowpdfbookmark
+\def\poppdfbookmark{%
+  \@tempcnta\Hy@currentbookmarklevel%
+  \advance\@tempcnta by -1\relax%
+  \xdef\Hy@currentbookmarklevel{\the\@tempcnta}%
+}
+
 % create a pdfbookmark, and write a macro to aux to remember the hypertarget (with level)
 \def\pdfbkmktarget#1#2{%
   \belowpdfbookmark{#1}{#2}%
@@ -1041,23 +1048,32 @@ They will only be defined if \TikZ\ is also loaded in the document preamble.
   under the names \ttx{(layer \meta{n})}, where \meta{n} is the corresponding
   value of the |next| counter.
 
+  \subpdfbookmark{layer scope options}{layer scope}
   The following special options can be given within \ttc{\next*} scope options.
-  \begin{description}
-  \item[\tt t\OR c\OR b] These options do not alter anything by themselves.
-    However, subsequent calls to the options below will behave differently for
-    different alignment keys.  The default value is the alignment of the most
-    recent layer node.
-  \item[\tt layer xy] Set the \ttx{xy} coordinate system to span the bounding box of
-    the layers rendered so far.  The origin depends on the alignment of the most
-    recent layer, or a \ttx{t\OR c\OR b} alignment option to the \ttc{\next*}
-    scope.  The origin is placed at the \ttx{north west}, \ttx{center} or
-    \ttx{south west} of the bounding node, for \ttx t, \ttx c, or \ttx b
-    alignment respectively.  The \ttx x vector extends horizontally to the east
-    border of the bounding node, while \ttx y extends vertically to the opposite
-    side (or top for \ttx c alignment).
+  \begin{commandalt}[t c b (layer scope option)]{{t\OR c\OR b}}{}
+      These options do not alter anything by themselves.
+      However, subsequent calls to the options below will behave differently for
+      different alignment keys.  The default value is the alignment of the most
+      recent layer node.
+  \end{commandalt}
+
+  \begin{commandalt}[layer xy (layer scope option)]{{layer xy}\opt{=\meta{bbox}}}{}
+
+    Set the \ttx{xy} coordinate system in the scope to span the bounding box of
+    the layers rendered so far, or a specified \ometa{bbox} node.  It is
+    possible to set \ometa{bbox} to \ttx{current page}, in combination with an
+    \ttx{overlay} option to the scope.
+%
+    The origin of he coordinates depends on the alignment of the most recent
+    layer, or a \ttx{t\OR c\OR b} alignment option to the \ttc{\next*} scope.
+    The origin is placed at the \ttx{north west}, \ttx{center} or \ttx{south
+      west} of the bounding node, for \ttx t, \ttx c, or \ttx b alignment
+    respectively.  The \ttx x vector extends horizontally to the east border of
+    the bounding node, while \ttx y extends vertically to the opposite side (or
+    top for \ttx c alignment).
   \begin{center}
   \begin{tikzpicture}[box/.style={draw, minimum width=6em, minimum height=6em},font={\tt\small}]
-    \node[box] (t) {bounding layer};
+    \node[box] (t) {bbox};
     \node[below=2ex] at (t.south) {\ttx{t} alignment};
     \begin{scope}[shift=(t.north west), x=(t.north east), y=(t.south west)]
       \fill (0,0) circle (2pt);
@@ -1068,7 +1084,7 @@ They will only be defined if \TikZ\ is also loaded in the document preamble.
       \node at (1,0) [above right,inner sep=0pt] {(1,0)};
     \end{scope}
 
-    \node[box, right=8em, text height=4em] at (t.east) (c) {bounding layer};
+    \node[box, right=8em, text height=4em] at (t.east) (c) {bbox};
     \node[below=2ex] at (c.south) {\ttx{c} alignment};
     \begin{scope}[shift=(c), x=(c.east), y=(c.north)]
       \fill (0,0) circle (2pt);
@@ -1079,8 +1095,7 @@ They will only be defined if \TikZ\ is also loaded in the document preamble.
       \node at (1,0) [below right,inner sep=0pt] {(1,0)};
     \end{scope}
 
-
-    \node[box, right=8em] at (c.east) (b) {bounding layer};
+    \node[box, right=8em] at (c.east) (b) {bbox};
     \node[below=2ex] at (b.south) {\ttx{b} alignment};
     \begin{scope}[shift=(b.south west), x=(b.south east), y=(b.north west)]
       \fill (0,0) circle (2pt);
@@ -1092,13 +1107,33 @@ They will only be defined if \TikZ\ is also loaded in the document preamble.
     \end{scope}
   \end{tikzpicture}
   \end{center}
+  \end{commandalt}
   
-  \item[\tt layer grid] Draw a grid within the current \ttx{layer xy} coordinates.
-    Fine grid lines are 0.1 units apart.  Heavier lines are placed at full units.
-  \end{description}
-
-  
+  \begin{commandalt}[layer grid (layer scope option)]{{layer grid}\opt{=\meta{options}}}{}
+    Draw a grid within the current \ttx{layer xy} coordinates.  By default the
+    grid fills the layer.  Fine minor grid lines are 0.1 units apart. and
+    heavier major grid lines are placed at full units.  The default appearance
+    is taken from the \TikZ\ \ttx{help lines} style, with major lines drawn
+    \ttx{thick}.  The appearance and grid parameters can be changed using
+    \ometa{options}, which may include the following special keys:
+    \begin{description}
+    \item[\tt min=\meta{value}] The minimum coordinate of the grid; \meta{value}
+      should be a number that applies to both \ttx x and \ttx y dimensions
+      (default=0 for \ttx t and \ttx b aligned coordinates, or -1 for \ttx c).
+    \item[\tt max=\meta{value}] The maximum coordinate of the grid; \meta{value}
+      should be a number that applies to both \ttx x and \ttx y dimensions (default=1).
+    \item[\tt spaced=\meta{value}] the spacing between grid lines (default = 0.1 for
+      minor, or 1 for major).
+    \item[\tt minor=\marg{options}] options for the minor grid only (may include
+      \ttx{min\OR max\OR spaced}).
+    \item[\tt major=\marg{options}] options for the major grid only (may include
+      \ttx{min\OR max\OR spaced}).
+    \end{description}
+  \end{commandalt}
 \end{envwithcontents}
+\poppdfbookmark
+
+
 \begin{environment}{{layers<>}
     \oarg{parameter spec}\marg{code}\optsarg{default specification}}
   This is a synonym for |\begin{incrementallayers} ... \end{incrementallayers}|.
@@ -1522,7 +1557,7 @@ its original behaviour.  You have been warned.
   This is the action equivalent of \cmd\alerts.
 \end{commandalt}
 
-\begin{command}{\alert*\marg{argument}}%
+\begin{command}{{\alert*}\marg{argument}}%
   {alert \meta{argument} when activated}
   %
   Executes \ttc\alert\marg{argument} if an enclosing \cmd\alerts\ command or
@@ -1739,7 +1774,7 @@ Ordinarily, glerts remain inactive in all except \ttx{beamer} mode.  To include
 an active glert in (say) \ttx{handout} mode, include the mode spec
 \ttx{<handout>} or \ttx{<handout:*>} within the \meta{spec} passed to
 \cmd\glert.  The same options can can be included in the spec of an explicit
-\cmd\glerts\ command.  To activate \cmd{glert*}s implicitly from an enclosing
+\cmd\glerts\ command.  To activate \cmd{\glert*}s implicitly from an enclosing
 action, use \ttx{<handout:glerts@*>}.
 
 Alternatively, when using \cmd\handoutframe, specific overlays can be included
