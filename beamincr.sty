@@ -1283,7 +1283,7 @@
 \def\@glert@nodeoption<#1>#2X{\@glertsactivate<#1>\pgfkeysalso{glert*={#2}}}
 \tikzset{glert*/.code={%
     \pgfqkeys{/glert}{reset,#1}%
-    \pgfkeysalso{alias=@glertnode, alias=@glertbbox,  glert?node}
+    \pgfkeysalso{alias=@glertnode, alias=@glertbbox,  glert?node}%
 }}
 % can't work out how to put these in narrower scope!
 \def\glertbbox{@glertbbox}%
@@ -1336,7 +1336,7 @@
   \endgroup%
 }
 
-% activate styles switch from inactive to active
+% activate: styles switch from inactive to active
 \def\@glertsactivate<#1>{%
   \alt<handout:0|trans:0|article:0|#1>{%
     \tikzset{glert?picture/.style={glert picture active}}%
@@ -1373,6 +1373,7 @@
 
 \newcommand\@incrementallayers[1]{%
   \begin{tikzpicture}[%
+      remember picture,
       t/.style={layer@alignment=t, anchor=north},
       c/.style={layer@alignment=c, anchor=center},
       b/.style={layer@alignment=b, anchor=south},
@@ -1396,31 +1397,38 @@
 }
 
 \tikzset{
+  % layer xy coordinates
   layer xy t/.style={shift=(#1.north west), x=(#1.north east), y=(#1.south west)},
   layer xy c/.style={shift=(#1.center), x=(#1.east), y=(#1.north)},
   layer xy b/.style={shift=(#1.south west), x=(#1.south east), y=(#1.north west)},
-  layer xy/.code={\pgfkeysalso{layer xy \@incrementallayer@alignment=current bounding box}},
-% grids don't work with inverted xy coordinates dammit, so hack our own
-  layer grid t/.style={execute at begin scope={%
-      \draw[help  lines] \foreach \step in {0,0.1,...,1.001} {(0,\step) -- (1,\step) (\step,0) -- (\step,1)};
-      \draw[help  lines,thick] \foreach \step in {0,1} {(0,\step) -- (1,\step) (\step,0) -- (\step,1)};
+  layer xy/.default={current bounding box},
+  layer xy/.code={\pgfkeysalso{layer xy \@incrementallayer@alignment=#1}},
+  %
+  % grids don't work with inverted xy coordinates dammit, so hack our own
+  layer grid setup t/.style={min/.initial=0,max/.initial=1},
+  layer grid setup b/.style={min/.initial=0,max/.initial=1},
+  layer grid setup c/.style={min/.initial=-1,max/.initial=1},
+  %
+  layer grid minor/.style={spaced/.initial=0.1, help lines, @minor/.style={},
+    minor/.style={@minor/.append style={##1}}, major/.style={}},
+  layer grid major/.style={spaced/.initial=1, help lines, thick, @major/.style={},
+    major/.style={@major/.append style={##1}}, minor/.style={}},
+  %
+  layer grid getparams/.style={min/.get=\@lgmin,max/.get=\@lgmax, spaced/.get=\@lgspaced,
+    /utils/exec={\pgfmathsetmacro{\@lgincr}{\@lgmin+\@lgspaced}}},
+  %
+  layer grid install/.style={execute at begin scope={%
+      \draw[layer grid minor, #1, @minor, layer grid getparams]
+        \foreach \st in {\@lgmin,\@lgincr,...,\@lgmax} {(\@lgmin,\st) -- (\@lgmax,\st) (\st,\@lgmin) -- (\st,\@lgmax)};
+      \draw[layer grid major, #1, @major, layer grid getparams]
+        \foreach \st in {\@lgmin,\@lgincr,...,\@lgmax} {(\@lgmin,\st) -- (\@lgmax,\st) (\st,\@lgmin) -- (\st,\@lgmax)};
   }},
-  layer grid b/.style={execute at begin scope={%
-      \draw[help  lines] \foreach \step in {0,0.1,...,1.001} {(0,\step) -- (1,\step) (\step,0) -- (\step,1)};
-      \draw[help  lines,thick] \foreach \step in {0,1} {(0,\step) -- (1,\step) (\step,0) -- (\step,1)};
-  }},
-  layer grid c/.style={execute at begin scope={%
-      \draw[help  lines] \foreach \step in {-1,-0.9,...,1.001} {(-1,\step) -- (1,\step) (\step,-1) -- (\step,1)};
-    \draw[help  lines,thick] \foreach \step in {-1,0,1} {(-1,\step) -- (1,\step) (\step,-1) -- (\step,1)};
-  }},
-  layer grid/.code={\pgfkeysalso{layer grid \@incrementallayer@alignment}}
+  layer grid/.default={},
+  layer grid/.code={
+    \pgfkeysalso{layer grid setup \@incrementallayer@alignment,
+                 layer grid install={#1}}
+  },
 }
-
-\newenvironment{layerscope}[1][]
-  {% insert #1 twice: first allow layer alignment to be overridden, then to allow the xy coordinates to be changed
-    \begin{scope}[#1]}
-  {\end{scope}}
-
 
 
 }} %% end tikz-dependent extensions
