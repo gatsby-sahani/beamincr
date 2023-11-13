@@ -38,6 +38,16 @@
 \def\frame@nameornumber{\x@\ifblank\x@{\beamer@againname}{\insertframenumber}{\beamer@againname}}
 
 
+% gobbles
+\def\@gobbletocomma#1,{}
+\def\@printtocomma#1,#2X{#1}
+\def\@gobbletopipe#1|{}
+\def\@gobbletoamp#1&{}
+\def\@gobbletoparens#1(){}
+\def\@gobbletoxx#1XX{}
+\def\@gobbletoxdash#1X-{}
+
+
 %% 
 %% allow references to future labels
 %%
@@ -291,7 +301,7 @@
 % The tricky part is the optional offset.  The idea is to use a helper function
 % to call the main parser (\def'd to expect parens) with trailing ().  If there
 % were parens in the label, the parser will see them first, and use
-% \@gobbleparens to throw away the trailing ones (and any text between the real
+% \@gobbletoparens to throw away the trailing ones (and any text between the real
 % ones and the trailers).  If not, the parser sees an empty arg between the
 % parens and knows to ignore it.
 
@@ -302,9 +312,8 @@
 \def\@incrref[#1]#2(#3){%
   \@ifempty{#3}%
    {\@@incrref[#1]#2(0)}%
-   {\@@incrref[#1]#2(#3)\@gobbleparens}%
+   {\@@incrref[#1]#2(#3)\@gobbletoparens}%
 }
-\def\@gobbleparens#1(){}
 
 \def\@@incrref[#1]#2(#3){%
   \ifcsdef{beamincr@#1@#2}% check for frame-local label defn
@@ -464,16 +473,15 @@
 \def\@parseincrspec@handledash#1X#2-#3-{%
   \@ifempty{#2}{% leading -, label in #3, gobble X-
     \@zer@orempty{\@incrref[\frame@nameornumber]#3#1}-\@incrref[\frame@nameornumber]#3#1%
-    \@gobblexdash%
+    \@gobbletoxdash%
   }{%
     \@ifempty{#3}{% trailing -, label in #3, gobble X-
       \@incrref[\frame@nameornumber]#2#1-\@zer@orempty{\@incrref[\frame@nameornumber]#2#1}%
-      \@gobblexdash%
+      \@gobbletoxdash%
     }{% no -, label in #2
       \@incrref[\frame@nameornumber]#2#1}% just resolve this ref
     }%
 }
-\def\@gobblexdash#1X-{}
 
 
 
@@ -492,7 +500,6 @@
       {#1\x@\@gobbletoxx}%just print accumulated actions and remove the XX
       {\@parseresetspec@grabnum{#1}{}#3!}%else found !: grab the number at start of #3
 }
-\def\@gobbletoxx#1XX{}
 
 % hack to test for digit
 \def\ifisdigit#1{\ifcat_\ifnum9<1#1 _\else A\fi\x@\@firstoftwo\else\x@\@secondoftwo\fi}
@@ -559,10 +566,9 @@
       \PackageError{beamincr}{Label action field contains extra text: #2}{}%
     }%
   \else% no label -- gobble the following | character
-    \x@\@gobblepipe%
+    \x@\@gobbletopipe%
   \fi
 }
-\def\@gobblepipe#1|{}
 
 
 %% \parseincludedefaultspec - parse default spec inclusion
@@ -804,12 +810,11 @@
 % multiple \x@s needed because of \newcommand option munging
 \newcommand\incritem@next[1][\incritem@spec]{\x@\x@\x@\incritem@next@#1&&}
 \def\incritem@next@#1&#2&{%
-  \@ifempty{#2}{\incritem@next@@{#1}{\beamer@defaultospec}}{\incritem@next@@{#1}{#2}\@gobbleamp}}
+  \@ifempty{#2}{\incritem@next@@{#1}{\beamer@defaultospec}}{\incritem@next@@{#1}{#2}\@gobbletoamp}}
 \def\incritem@next@@#1#2#3\@endnext{%
   \let\saved@defaultospec\beamer@defaultospec\edef\beamer@defaultospec{#2}%
   \item#1#3%
   \let\beamer@defaultospec\saved@defaultospec}
-\def\@gobbleamp#1&{}
 \def\incritem@prenext{% look for itemize default spec
   \@ifnextchar[{\incritem@setspec}{}%
 }
@@ -1127,7 +1132,7 @@
 %% glerts
 %%
 
-% initialise a glert style
+% initialise a new glert style
 \def\makeglertstyle#1{%
   % initialise (empty) styles
   \defineglertstyle@store{#1}{picture}{active}[]{}\defineglertstyle@store{#1}{picture}{inactive}[]{}%
@@ -1135,24 +1140,29 @@
   \defineglertstyle@store{#1}{node}{active}[]{}\defineglertstyle@store{#1}{node}{inactive}[]{}%
   \defineglertstyle@store{#1}{path}{active}[]{}\defineglertstyle@store{#1}{path}{inactive}[]{}%
 
-  \tikzset{glert #1/.code={% install the glert style
-      \if@resetoninstall\pgfkeys{/tikz/glert null}\@resetoninstallfalse\fi
-      \pgfqkeys{/tikz}{glert picture inactive/.append style={glert #1 picture inactive={##1}}}%
-      \pgfqkeys{/tikz}{glert picture active/.append style={glert #1 picture active={##1}}}%
-      \pgfqkeys{/tikz}{glert bbox inactive/.append style={glert #1 bbox inactive={##1}}}%
-      \pgfqkeys{/tikz}{glert bbox active/.append style={glert #1 bbox active={##1}}}%
-      \pgfqkeys{/tikz}{glert node inactive/.append style={glert #1 node inactive={##1}}}%
-      \pgfqkeys{/tikz}{glert node active/.append style={glert #1 node active={##1}}}%
-      \pgfqkeys{/tikz}{glert path inactive/.append style={glert #1 path inactive={##1}}}%
-      \pgfqkeys{/tikz}{glert path active/.append style={glert #1 path active={##1}}}%
+  % tikz code to install the glert style
+  \tikzset{glert #1/.code={
+      %resets (clearing current glerts) controlled by calling functions
+      \if@resetoninstall\pgfkeys{/tikz/glert null}\@resetoninstallfalse\fi 
+      \pgfqkeys{/tikz}{
+        glert picture inactive/.append style={glert #1 picture inactive={##1}},
+        glert picture active/.append style={glert #1 picture active={##1}},
+        glert bbox inactive/.append style={glert #1 bbox inactive={##1}},
+        glert bbox active/.append style={glert #1 bbox active={##1}},
+        glert node inactive/.append style={glert #1 node inactive={##1}},
+        glert node active/.append style={glert #1 node active={##1}},
+        glert path inactive/.append style={glert #1 path inactive={##1}},
+        glert path active/.append style={glert #1 path active={##1}},
+      }
   }}
+  % calls within /glert context get passed to tikz code above
   \pgfkeys{/glert/#1/.forward to=/tikz/glert #1}%
 }
 
-% set an object style #1 - glert, #2 - object, #3 - (in)active, [#4] default, #5 - style
+% set an object style: #1: glert; #2: object; #3: (in)active; [#4] default; #5: style
 \def\defineglertstyle#1#2#3{\@ifnextchar[{\defineglertstyle@store{#1}{#2}{#3}}{\defineglertstyle@store{#1}{#2}{#3}[]}}
 \def\defineglertstyle@store#1#2#3[#4]#5{%
-  \tikzset{glert #1 #2 #3/.style={#5}}%
+  \tikzset{glert #1 #2 #3/.append style={#5}}%
   \ifblank{#4}{}{\tikzset{glert #1 #2 #3/.default={#4}}}%
 }
 % define an glert path (appended to node) #1 - glert; #2 - (in)active; #3 - path
@@ -1161,18 +1171,19 @@
 }
 
 % the null glert style clears all the styles
-\tikzset{glert null/.code={%
-    \pgfqkeys{/tikz}{glert picture inactive/.style={}}%
-    \pgfqkeys{/tikz}{glert picture active/.style={}}%
-    \pgfqkeys{/tikz}{glert bbox inactive/.style={}}%
-    \pgfqkeys{/tikz}{glert bbox active/.style={}}%
-    \pgfqkeys{/tikz}{glert node inactive/.style={}}%
-    \pgfqkeys{/tikz}{glert node active/.style={}}%
-    \pgfqkeys{/tikz}{glert path inactive/.style={}}%
-    \pgfqkeys{/tikz}{glert path active/.style={}}%
-  }%
-}
 \pgfkeys{/glert/null/.forward to=/tikz/glert null}%
+\tikzset{glert null/.code={%
+    \pgfqkeys{/tikz}{
+      glert picture inactive/.style={},
+      glert picture active/.style={},
+      glert bbox inactive/.style={},
+      glert bbox active/.style={},
+      glert node inactive/.style={},
+      glert node active/.style={},
+      glert path inactive/.style={},
+      glert path active/.style={},
+    }%
+}}
 
 % parse [opt]angle:target values (for callouts, labels, etc)
 \tikzset{
@@ -1182,6 +1193,10 @@
   glert angle pos/.initial=1,
   glert angle sep/.initial=0pt,
 }
+\pgfqkeys{/glert}{% short aliases in glert context
+  pos/.style={/tikz/glert angle pos=#1},
+  sep/.style={/tikz/glert angle sep=#1},
+}
 \def\@glert@angle@parser@chkopt{\@ifnextchar[{\@glert@angle@parser}{\@glert@angle@parser[]}}
 \def\@glert@angle@parser[#1]#2:#3:#4X{%
   \@ifempty{#3}{\@ifempty{#4}%
@@ -1189,49 +1204,27 @@
     {\@glert@angle@parser@do[#1]{#2}{}}%  []foo:
   }{\@glert@angle@parser@do[#1]{#2}{#3}}% []foo:bar
 }
-\def\@glert@angle@parser@do[#1]#2#3{\pgfkeysalso{
+\def\@glert@angle@parser@do[#1]#2#3{%
+  \pgfqkeys{/glert}{#1} % process opts (incl any pos/sep) in glert context -- will pass unknown opts to tikz
+  \pgfqkeys{/tikz}{
     glert angle options/.style={#1},
     glert angle=#2,
     glert angle target=#3,
     glert angle options/.get=\glertangleoptions,
     glert angle/.get=\glertangle,
     glert angle target/.get=\glertangletarget,
-    % after parser called, 'pos' is overridden to set glert angle pos
-    pos/.style={glert angle pos=##1,glert angle pos/.get=\glertanglepos},
-    sep/.style={glert angle sep=##1,glert angle sep/.get=\glertanglesep},
-}}
-\def\glertangleplace{($(\glertnode.center)!\glertanglepos!(\glertnode.\glertangle) + (\glertangle:\glertanglesep)$)}
+    glert angle pos/.get=\glertanglepos,    
+    glert angle sep/.get=\glertanglesep,
+  }
+}
+\def\glertanglecoord{($(\glertnode.center)!\glertanglepos!(\glertnode.\glertangle) + (\glertangle:\glertanglesep)$)}
 
-% define some basic glert styles
-\makeglertstyle{alert}
-  \defineglertstyle{alert}{node}{active}[red]{text=#1}
-\makeglertstyle{box}
-  \defineglertstyle{box}{node}{active}[red]{very thick,draw=#1}
-\makeglertstyle{ellipse}
-  \defineglertstyle{ellipse}{node}{inactive}{ellipse}
-  \defineglertstyle{ellipse}{node}{active}[red]{ellipse,very thick,draw=#1}
-\makeglertstyle{highlight}
-  \defineglertstyle{highlight}{node}{active}[red]{fill opacity=0.2,text opacity=1,fill=#1}
-\makeglertstyle{uline}
-  \defineglertpath{uline}{active}{(\glertnode.south east) -- (\glertnode.south west)}
-  \defineglertstyle{uline}{path}{active}{draw,red,very thick,#1}
-\makeglertstyle{sout}
-  \defineglertpath{sout}{active}{(\glertnode.west) -- (\glertnode.east)}
-  \defineglertstyle{sout}{path}{active}{draw,red,very thick,#1}
-\providecommand\tikzfading[1][]{}% do nothing if fading library not loaded
-\tikzfading[name=spotlight,inner color=transparent!0, outer color=transparent!100]
-\makeglertstyle{spotlight}
-  \defineglertstyle{spotlight}{node}{active}[red!50]{ellipse,path fading=spotlight,fill=#1}
-  \defineglertstyle{spotlight}{node}{inactive}{ellipse}
-\makeglertstyle{connect}
-  \defineglertpath{connect}{active}{(\glertnode) to #1}
-  \defineglertstyle{connect}{path}{active}{draw,red,very thick,<->}
-\tikzset{glert callout options/.style={rectangle callout, draw, pos=2.5, sep=0pt}}
-\makeglertstyle{callout}
-  \defineglertpath{callout}{active}{%
-       node[glert angle parser={#1}, glert callout options,  glert angle options, at=\glertangleplace,
-                callout absolute pointer=(\glertnode.\glertangle), node contents={\glertangletarget}]
-     }
+% expanded opt processing -- second form enables special treatment of first entry (with \printtocomma)
+\tikzset{
+  also/.code={\x@\pgfkeysalso\x@{#1}},
+  also skip first/.code={\x@\pgfkeysalso\x@{\@gobbletocomma#1,}}
+}
+\def\printtocomma#1{\@printtocomma#1,X}
 
 % trigger reset on installation of first glert style from options (but no reset if there aren't any styles)
 \newif\if@resetoninstall
@@ -1266,6 +1259,50 @@
 }
 \def\glert@name@node#1{\glert@name@node@#1}
 \def\glert@name@node@(#1){\pgfkeysalso{node inactive={name={#1}}, node active={name={#1}}}}
+
+
+%% define some basic glert styles
+
+\makeglertstyle{alert}
+  \defineglertstyle{alert}{node}{active}[red]{text=#1}
+\makeglertstyle{box}
+  \defineglertstyle{box}{node}{active}[red]{very thick,draw=#1}
+\makeglertstyle{ellipse}
+  \defineglertstyle{ellipse}{node}{inactive}{ellipse}
+  \defineglertstyle{ellipse}{node}{active}[red]{ellipse,very thick,draw=#1}
+\makeglertstyle{highlight}
+  \defineglertstyle{highlight}{node}{active}[red]{fill opacity=0.2,text opacity=1,fill=#1}
+\makeglertstyle{uline}
+  \defineglertpath{uline}{active}{(\glertnode.south east) -- (\glertnode.south west)}
+  \defineglertstyle{uline}{path}{active}{draw,red,very thick,#1}
+\makeglertstyle{sout}
+  \tikzset{glert sout/.default=0}%  
+  \defineglertpath{sout}{active}{[shift=(\glertnode)] (\glertnode.\printtocomma{#1}) -- ($-1*(\glertnode.\printtocomma{#1})$)}
+  \defineglertstyle{sout}{path}{active}{draw,red,very thick,also skip first={#1}}
+\makeglertstyle{xout}
+  \tikzset{glert xout/.default=north east}%  
+  \defineglertpath{xout}{active}{[shift=(\glertnode)]
+    (\glertnode.\printtocomma{#1} |- \glertnode.north) -- ($-1*(\glertnode.\printtocomma{#1} |- \glertnode.north)$)
+    (\glertnode.\printtocomma{#1} |- \glertnode.south) -- ($-1*(\glertnode.\printtocomma{#1} |- \glertnode.south)$) }
+  \defineglertstyle{xout}{path}{active}{draw,red,very thick,also skip first={#1}}
+\providecommand\tikzfading[1][]{}% do nothing if fading library not loaded
+\tikzfading[name=spotlight,inner color=transparent!0, outer color=transparent!100]
+\makeglertstyle{spotlight}
+  \defineglertstyle{spotlight}{node}{active}[red!50]{ellipse,path fading=spotlight,fill=#1}
+  \defineglertstyle{spotlight}{node}{inactive}{ellipse}
+\makeglertstyle{connect}
+  \defineglertpath{connect}{active}{(\glertnode) to #1}
+  \defineglertstyle{connect}{path}{active}{draw,red,very thick,<->}
+\tikzset{glert label options/.style={glert angle pos=1, glert angle sep=0pt}}
+\makeglertstyle{label}
+  \defineglertpath{label}{active}{[glert angle parser={#1}]
+    (\glertnode.center) -- \glertanglecoord node[glert label options, glert angle options, pos=1] {\glertangletarget}}
+\tikzset{glert callout options/.style={rectangle callout, draw, glert angle pos=2.5, glert angle sep=0pt}}
+\makeglertstyle{callout}
+  \defineglertpath{callout}{active}{node[glert callout options, glert angle parser={#1}, at=\glertanglecoord,
+      callout absolute pointer=(\glertnode.\glertangle)] {\glertangletarget}}
+
+
 
 %% user glert commands
 
@@ -1315,7 +1352,7 @@
 % But \mathchoice (and therefore \mathpalette) sets all four arguments, and only chooses the
 % appropriate one at the end of mmode.
 % So the function called by \mathpalette has to complete the rendering (which it does 4 times).
-% This is not efficient, but it seems necessary.
+% This can be avoided by passing an explicit style instruction as above 
 \newbox\@glerttext
 \newbox\@glertphtm
 \def\@glert@set@node#1#2[#3]#4{% (math)delim, style, opts, text
@@ -1441,6 +1478,6 @@
 
 % Local Variables:
 % mode: latex
-% eval: (set-fill-column 80)
+% eval: (set-fill-column 120)
 % eval: (face-remap-add-relative 'default :family "Ubuntu Mono")
 % End:
