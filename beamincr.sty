@@ -1132,6 +1132,8 @@
 %% glerts
 %%
 
+%% defining glert styles 
+
 % initialise a new glert style
 \def\makeglertstyle#1{%
   % initialise (empty) styles
@@ -1185,40 +1187,80 @@
     }%
 }}
 
-% parse [opt]angle:target values (for callouts, labels, etc)
+%% parsing arguments and opts
+\newcommand{\tikzval}[1]{\pgfkeysvalueof{/tikz/#1}}
+
+% parse [opt]angle:[tgt opt]target  (for callouts, labels, etc)
 \tikzset{
   glert angle parser/.code={\@glert@angle@parser@chkopt#1::X},
   glert angle/.initial=0,
   glert angle target/.initial={},
   glert angle pos/.initial=1,
   glert angle sep/.initial=0pt,
+  glert angle inside/.initial=west,
+  glert angle outside/.initial=east,
+  glert angle orient/.code={\glertangleorient{#1}},
+  glert anchor in/.style={anchor=\tikzval{glert angle inside}},
+  glert anchor out/.style={anchor=\tikzval{glert angle outside}},
 }
 \pgfqkeys{/glert}{% short aliases in glert context
   pos/.style={/tikz/glert angle pos=#1},
   sep/.style={/tikz/glert angle sep=#1},
+  anchor in/.style={/tikz/glert anchor in},
+  anchor out/.style={/tikz/glert anchor out},
+  in/.style={/tikz/glert anchor out},
+  out/.style={/tikz/glert anchor in},
 }
 \def\@glert@angle@parser@chkopt{\@ifnextchar[{\@glert@angle@parser}{\@glert@angle@parser[]}}
 \def\@glert@angle@parser[#1]#2:#3:#4X{%
   \@ifempty{#3}{\@ifempty{#4}%
-    {\@glert@angle@parser@do[#1]{}{#2}}%  []foo
-    {\@glert@angle@parser@do[#1]{#2}{}}%  []foo:
-  }{\@glert@angle@parser@do[#1]{#2}{#3}}% []foo:bar
+    {\@glert@angle@parser@target@chkopt[#1]{}#2X}%  []foo
+    {\@glert@angle@parser@do[#1]{#2}[]{}X}%          []foo:
+  }{\@glert@angle@parser@target@chkopt[#1]{#2}#3X}% []foo:bar
 }
-\def\@glert@angle@parser@do[#1]#2#3{%
+\def\@glert@angle@parser@target@chkopt[#1]#2{\@ifnextchar[{\@glert@angle@parser@do[#1]{#2}}{\@glert@angle@parser@do[#1]{#2}[]}}
+\def\@glert@angle@parser@do[#1]#2[#3]#4X{%
   \pgfqkeys{/glert}{#1} % process opts (incl any pos/sep) in glert context -- will pass unknown opts to tikz
   \pgfqkeys{/tikz}{
     glert angle options/.style={#1},
-    glert angle=#2,
-    glert angle target=#3,
-    glert angle options/.get=\glertangleoptions,
-    glert angle/.get=\glertangle,
-    glert angle target/.get=\glertangletarget,
+    glert angle=#2,			glert angle/.get=\glertangle,
+    glert angle target options/.style={#3},
+    glert angle target=#4,    		glert angle target/.get=\glertangletarget,
     glert angle pos/.get=\glertanglepos,    
     glert angle sep/.get=\glertanglesep,
+    glert angle orient=#2,
   }
 }
 \def\glertanglecoord{($(\glertnode.center)!\glertanglepos!(\glertnode.\glertangle) + (\glertangle:\glertanglesep)$)}
-
+\newif\if@angleleft
+\def\glertangleorient#1{%
+  \@angleleftfalse
+  \ifpgfslopedattime\ifpgfallowupsidedownattime\else
+    \ifstrequal{#1}{west}{\@anglelefttrue}{
+      \ifstrequal{#1}{north west}{\@anglelefttrue}{
+        \ifstrequal{#1}{south west}{\@anglelefttrue}{
+          \iffirst n{#1}{}{\iffirst s{#1}{}{\iffirst e{#1}{}{% skip other directions
+                \pgfmathparse{int(floor(cos(#1)))}
+                \ifnumless{\pgfmathresult}{0}{\@anglelefttrue}{
+    }}}}}}}
+  \fi\fi
+  \if@angleleft
+    \pgfqkeys{/tikz}{
+      glert angle inside=east,	glert angle inside/.get=\glertangleinside,
+      glert angle outside=west,	glert angle outside/.get=\glertangleoutside,
+    }
+  \else
+    \pgfqkeys{/tikz}{
+      glert angle inside=west,	glert angle inside/.get=\glertangleinside,
+      glert angle outside=east,	glert angle outside/.get=\glertangleoutside,
+    }
+  \fi
+}
+% useful synonyms
+\tikzset{
+  tight/.default=0pt,
+  tight/.style={inner sep=#1}
+}
 % expanded opt processing -- second form enables special treatment of first entry (with \printtocomma)
 \tikzset{
   also/.code={\x@\pgfkeysalso\x@{#1}},
@@ -1226,10 +1268,7 @@
 }
 \def\printtocomma#1{\@printtocomma#1,X}
 
-% trigger reset on installation of first glert style from options (but no reset if there aren't any styles)
-\newif\if@resetoninstall
-\pgfkeys{/glert/reset/.is if=@resetoninstall}
-\pgfkeys{/glert/reset/.default=true}
+%% user key options
 
 % allow user to fine tune each object in \glert options
 \pgfkeys{
@@ -1293,18 +1332,34 @@
 \makeglertstyle{connect}
   \defineglertpath{connect}{active}{(\glertnode) to #1}
   \defineglertstyle{connect}{path}{active}{draw,red,very thick,<->}
-\tikzset{glert label options/.style={glert angle pos=1, glert angle sep=0pt}}
+\tikzset{glert label options/.style={glert angle pos=1, glert angle sep=0pt, glert anchor in}}
 \makeglertstyle{label}
   \defineglertpath{label}{active}{[glert angle parser={#1}]
-    (\glertnode.center) -- \glertanglecoord node[glert label options, glert angle options, pos=1] {\glertangletarget}}
+    (\glertnode.center) -- \glertanglecoord node[pos=1, glert label options, glert angle target options] {\glertangletarget}}
 \tikzset{glert callout options/.style={rectangle callout, draw, glert angle pos=2.5, glert angle sep=0pt}}
 \makeglertstyle{callout}
   \defineglertpath{callout}{active}{node[glert callout options, glert angle parser={#1}, at=\glertanglecoord,
       callout absolute pointer=(\glertnode.\glertangle)] {\glertangletarget}}
+\tikzset{glert signal options/.style={glert angle pos=1, glert angle sep=0pt, glert anchor in,
+    signal to in/.style={signal to=\tikzval{glert angle inside}},
+    signal to out/.style={signal to=\tikzval{glert angle outside}},
+    signal from in/.style={signal from=\tikzval{glert angle inside}},
+    signal from out/.style={signal from=\tikzval{glert angle outside}},
+    signal to in,
+}}
+\makeglertstyle{signal}
+  \defineglertpath{signal}{active}{[glert angle parser={#1}]
+    (\glertnode.center) -- \glertanglecoord node[signal, pos=1, glert signal options, glert angle target options] {\glertangletarget}}
 
 
 
 %% user glert commands
+
+% trigger reset on next installation of glert style
+\newif\if@resetoninstall
+\pgfkeys{/glert/reset/.is if=@resetoninstall}
+\pgfkeys{/glert/reset/.default=true}
+
 
 % install a glert style
 \newcommand{\useglert}[1]{\pgfqkeys{/glert}{reset,#1}}
@@ -1330,7 +1385,8 @@
 \def\glertnode{@glertnode}%
 
 
-% internals
+%% glert command internals
+
 \newcommand<>\@glert[2][]{{\@glertsactivate#3\@glert@star[#1]{#2}}} % group to restrict activation
 \newcommand\@glert@star[2][]{%
   \ifmmode\@glert@set@node@mathcheck#1,X{#2}\else\@glert@set@node{}{}[#1]{#2}\fi
@@ -1392,6 +1448,10 @@
 }
 % start inactive
 \@glertsactivate<0>
+
+
+
+
 
 
 %% 
