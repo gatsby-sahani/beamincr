@@ -1803,6 +1803,19 @@ are as follows.
   line can be altered with standard \TikZ\ line options.  The default is red and
   ``very thick''.
 
+\item[\tt sout=\ometa{angle, line options}] Strikeout the text by placing a
+  horizontal line (or line tilted by \meta{angle} from horizontal) through it.
+  The \meta{angle} may be a direction keyword such as \ttx{north east}.  The
+  appearance of the line can be altered with standard \TikZ\ line options.  The
+  default line is red and ``very thick''.
+
+\item[\tt xout=\ometa{angle, line options}] A version of \ttx{sout} that adds a
+  second line flipped vertically from the first, creating an X shape.  The
+  default behaviour is to join opposite corners of the containing node (equivalent to
+  \meta{angle}=\ttx{north east}), otherwise they are drawn $\pm$\meta{angle}
+  from horizontal.  The appearance of the lines can be altered with standard
+  \TikZ\ line options.  The default lines are red and ``very thick''.
+
 \item[\tt highlight=\ometa{color, \dots}] Fill a background box with partly transparent
   red or \meta{color}, much as a highlighter would on paper.
 
@@ -1819,6 +1832,36 @@ are as follows.
   of the line can be changed by specifying \ttx{path=\marg{options}} within the
   \ometa{further options} of the \cmd\glert\ttx{[*]} command.
 
+\item[\tt label=\{\oarg{path options}\meta{angle}:\oarg{label node options}\meta{label text}\}]
+  Place a label near the glert node.
+
+  Possible  \meta{path options}:
+  \begin{description}
+  \item{\ttx{pos=\meta{scale}}} scale separation from glert node in proportion
+    to the glert node ``radius''.
+  \item {\ttx{sep=\meta{dimen}}} add \meta{dimen} to separation from glert node.
+    If \meta{angle} is a a keyword, \ttx{pos} moves along the corresponding
+    direction defined by the glert node shape, whereas \ttx{sep} moves in the
+    corresponding absolute direction (e.g. $45^\circ$ for \ttx{north east}).
+  \item{\ttx{sloped}} rotate the label according to angle, by default keeping
+    text from being upside down.
+  \item{\ttx{allow upside down}} Allow upside down text.  Should be given in
+    \ttx{path options} to ensure that anchor orientation is correct.
+  \end{description}
+
+  Possible  \meta{label node options}:
+  \begin{description}
+  \item{\ttx{anchor in}} anchor to the east/west side closer to the glert node.
+  \item{\ttx{anchor out}} anchor to the east/west side further from the glert node.
+  \end{description}
+    
+\item[\tt signal=\{\oarg{path options}\meta{angle}:\oarg{signal node options}\meta{signal text}\}]
+  Use a \ttx{signal} node \ttx{label}.  
+  
+  The special options \ttx{\string|>,>>,>\string|,<\string|,<<,\string|<}
+  control the presence and orientation of signal pointers.  Right \ttx>s
+  indicate pointers inwards to the glert node.
+  
 \item[\tt callout=\{\oarg{callout node options}\meta{angle}:\meta{callout text}\}]
 
   Draw a callout node containing \meta{callout text} pointing to the glert node
@@ -1828,12 +1871,7 @@ are as follows.
   node ``radius'': i.e., the distance from centre to edge in the direction of \meta{angle}.
 
   The \ometa{callout node options} can be used to change the callout appearance
-  and placement.  In particular, the \ttx{pos=\meta{scale}} option modifies the
-  position scale relative to the glert node ``radius'', and
-  \ttx{sep=\meta{dimen}} adds a further offset.  If \meta{angle} is a a keyword,
-  \ttx{pos} moves along the corresponding direction defined by the glert node
-  shape, whereas \ttx{sep} moves in the corresponding absolute direction
-  (e.g. $45^\circ$ for \ttx{north east}).
+  and placement.  
 
   Options can be set for all callouts using the \ttx{glert callout options}
   style.  Initially, this sets the defaults of \ttx{\{rectangle callout, draw,
