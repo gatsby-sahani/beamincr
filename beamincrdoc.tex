@@ -1721,7 +1721,7 @@ on the slide in a static fashion.
 
 The following commands are used to insert and control the activation of glerts.
 
-\begin{command}{\useglert\{\meta{style}$_1$\opt{=\meta{options}},
+\begin{command}{\useglert\tt\{\meta{style}$_1$\opt{=\meta{options}},
     \opt{\meta{style}$_2$=\meta{options}}, \oarg{further options}\}}
   {set style and options for future glerts}
   %
@@ -1730,7 +1730,7 @@ The following commands are used to insert and control the activation of glerts.
   \ometa{further options}, see \cref{sec:attention:glerts:refining}.
 \end{command}
 
-\begin{command}{\addglert\{\meta{style}$_1$\opt{=\meta{options}},
+\begin{command}{\addglert\tt\{\meta{style}$_1$\opt{=\meta{options}},
     \opt{\meta{style}$_2$=\meta{options}}, \oarg{further options}\}}
   {add style and options for future glerts}
   %
@@ -1832,35 +1832,83 @@ are as follows.
   of the line can be changed by specifying \ttx{path=\marg{options}} within the
   \ometa{further options} of the \cmd\glert\ttx{[*]} command.
 
-\item[\tt label=\{\oarg{path options}\meta{angle}:\oarg{label node options}\meta{label text}\}]
-  Place a label near the glert node.
 
-  Possible  \meta{path options}:
-  \begin{description}
-  \item{\ttx{pos=\meta{scale}}} scale separation from glert node in proportion
-    to the glert node ``radius''.
-  \item {\ttx{sep=\meta{dimen}}} add \meta{dimen} to separation from glert node.
-    If \meta{angle} is a a keyword, \ttx{pos} moves along the corresponding
-    direction defined by the glert node shape, whereas \ttx{sep} moves in the
-    corresponding absolute direction (e.g. $45^\circ$ for \ttx{north east}).
-  \item{\ttx{sloped}} rotate the label according to angle, by default keeping
-    text from being upside down.
-  \item{\ttx{allow upside down}} Allow upside down text.  Should be given in
+  
+\item[\tt label=\{\oarg{path options}\meta{angle}:\oarg{label node
+    options}\meta{label text}\}] Place a label near the glert node.  This is
+  similar to the \TikZ\ label and pin options, but allows more automated
+  placement and orientation control (beside, of course, being controlled by the
+  \cmd\glert\ incremental system).
+
+  The  \meta{path options} may include:
+  \begin{description}\topsep=0pt
+  \item[\tt pos=\meta{scale}] Scale separation from glert node in proportion
+    to the glert node ``radius''.  This is similar to the \TikZ\ \ttx{pos}
+    option for placing a node on a line, where the line in question extends from
+    the centre of the glert node to its border.
+
+  \item[\tt sep=\meta{dimen}] Add \meta{dimen} to the separation from glert
+    node.  If \meta{angle} is a a keyword, \ttx{pos} moves along the
+    corresponding direction defined by the glert node shape, whereas \ttx{sep}
+    moves in the corresponding absolute direction (e.g. $45^\circ$ for
+    \ttx{north east}).
+
+    \item[\tt from=center\OR border\OR corner\OR\meta{coord}] Start the path
+    defining a sloped label orientation (and a drawn path) from this location.
+
+    The value \ttx{border} corresponds to the point on the border along the
+    straight line between the glert node center and the label anchor (as
+    calculated by the \TikZ\ node coordinate system), while \ttx{corner} refers
+    to \ttx{(\meta{glert node}.\meta{angle})}.  These may differ if \meta{angle}
+    is a keyword like \ttx{north east}.  It is also possible to specify an
+    explicit coordinate (potentially defined in terms of \ttc\glertnode,
+    \ttc\glertangle\ and other commands described in
+    \cref{sec:attention:glerts:defining}).
+
+    The value of \ttx{from} does not change the interpretation of \ttx{pos} or
+    \ttx{sep}; they are always defined relative to the centre or corner as
+    described above.  If \ttx{pos}=1 and \ttx{sep}=0pt (the defaults) then
+    choosing \ttx{from=border\OR corner} creates a path of zero length, which
+    cannot be used to orient the label.  If either is fractionally larger then
+    the orientation angle is restored.  So a glert like \\
+    \hspace*{1em} \ttx{label=\{[sep=0.1pt, from=corner, sloped]north west:\meta{label text}\}}
+    \\
+    will place a label at the corner oriented at $135^\circ$, while
+    \\
+    \hspace*{1em} \ttx{label=\{[pos=1.001, from=corner, sloped]north west:\meta{label text}\}}
+    \\
+    will orient the label to point to the node centre.
+    
+\item[\tt sloped\opt{=\meta{bool}}] Rotate the label to point towards \ttx{from}, by default
+    flipping orientation as necessary to keep the text from being rendered
+    upside down.
+
+  \item[\tt allow upside down\opt{=\meta{bool}}]  Allow upside down text.  Should be given in
     \ttx{path options} to ensure that anchor orientation is correct.
+
+  \item[\tt draw\opt{=\meta{color}}] Draw the path from \ttx{from} to the
+    label.  Any additional line style options (or \ttx{path=\meta{options}} are
+    applied to this path.
   \end{description}
 
-  Possible  \meta{label node options}:
+  The \meta{label node options} may describe the appearance of the label, and
+  its placement relative to the anchor point defined by the path.  Options
+  include:
   \begin{description}
-  \item{\ttx{anchor in}} anchor to the east/west side closer to the glert node.
-  \item{\ttx{anchor out}} anchor to the east/west side further from the glert node.
+  \item{\ttx{anchor in}} Anchor to the east/west side closer to the glert node.
+  \item{\ttx{anchor out}} Anchor to the east/west side farther from the glert node.
+  \item{\ttx{inward}} Anchor to the east/west side father from the glert node,
+    so that text runs inward to the node from the anchor.
+  \item{\ttx{outward}} Anchor to the east/west side closer to the glert node so
+    that text runs outward from the anchor away from the node.
   \end{description}
     
-\item[\tt signal=\{\oarg{path options}\meta{angle}:\oarg{signal node options}\meta{signal text}\}]
-  Use a \ttx{signal} node \ttx{label}.  
-  
-  The special options \ttx{\string|>,>>,>\string|,<\string|,<<,\string|<}
-  control the presence and orientation of signal pointers.  Right \ttx>s
-  indicate pointers inwards to the glert node.
+\item[\tt signal=\{\oarg{path options}\meta{angle}:\oarg{signal node
+    options}\meta{signal text}\}] Use a \ttx{signal} node \ttx{label}.  All the
+  label options apply.  In addition, the options
+  \ttx{\string|>,>>,>\string|,<\string|,<<,\string|<} control the presence and
+  orientation of signal pointers.  Right \ttx>s indicate pointers inwards to the
+  glert node.
   
 \item[\tt callout=\{\oarg{callout node options}\meta{angle}:\meta{callout text}\}]
 
@@ -1912,9 +1960,9 @@ Although the added compilation induced by this quirk is generally acceptable,
 there is one context in which it creates a real difficulty.  If a named glert is
 to be referenced (say, with the \ttx{connect} glert style), the same name is
 associated with all four nodes in turn, ending with the
-\ttc\scriptscriptstyle\ version.  If the \ttc\scriptscriptstyle\ version isn't
-the one used in the final layout, then \TikZ\ treats the final named node as
-though it were in the bottom left corner of the page.
+\ttc\scriptscriptstyle\ version.  If that version isn't the one used in the
+final layout, then \TikZ\ treats the final named node as though it were in the
+bottom left corner of the page.
 
 To work around this issue \beamincr\ makes it possible to specify the correct
 mathstyle explicitly, thus removing the need for the four versions.  This is
@@ -1925,7 +1973,7 @@ from the mathstyle command by a comma, but this is not necessary.
 
 \example
 \begin{verbatim}
-\begin{equation*}% simple, but naming issues
+\begin{equation*}% simple, but slow and cannot access the names
 \int_{\glert[(lo)]{-\infty}}^{\glert[(hi)]{+\infty}} e^{-i\omega t} d\omega = 2\pi\delta(t)
 \end{equation*}
 
@@ -1948,7 +1996,7 @@ node itself (including any glert-based modifications to the node) will
 ordinarily contribute to the size of the picture.  However, any glert path
 additions will not, and so may extend outside the picture bounding box.
 
-\begin{commandalt}[glert (tikz option)]{{tikz option: glert}=\{\sarg{overlay spec}\oarg{options}\}}
+\begin{commandalt}[glert (tikz option)]{{tikz option: glert}\ttx{=\{\sarg{overlay spec}\ometa{options}\}}}
   {option to \ttx{node} to apply a graphical alert on \meta{overlay spec}}
   %
   This option can be given to a \TikZ\ node, to apply a glert specification
@@ -1957,7 +2005,7 @@ additions will not, and so may extend outside the picture bounding box.
   options, as in the \cmd\glert\ command.
 \end{commandalt}
 
-\begin{commandalt}[glert* (tikz option)]{{tikz option: glert*}=\{\oarg{options}\}}
+\begin{commandalt}[glert* (tikz option)]{{tikz option: glert*}\ttx{=\{\ometa{options}\}}}
   {option to \ttx{node} to apply a graphical alert when activated}
   %
   This option can be given to a \TikZ\ node, to apply the glert specification
@@ -2100,31 +2148,53 @@ will be unaffected.  To also increase the space reserved for the glert, use
   \end{description}
 \end{command}
 
-\begin{commandalt}[glert angle parser (tikz option)]{{tikz option: glert angle parser}=\{\oarg{options}\meta{angle}:\meta{target}\}}{}
+\begin{commandalt}[glert angle parser (tikz option)]{{tikz option: glert angle  parser}=\{\oarg{options}\meta{angle}:\oarg{target options}\meta{target}\}}{}
 
   This option is designed to accept a label-type argument to a glert and parse
-  it into components that can be used by later options or glert paths.  It also
-  installs two options for local use within \meta{options}: \ttx{pos=\meta{pos}}
-  and \ttx{sep=\meta{sep}}.
+  it into components that can be used by later options or glert paths.  The full
+  effect depends on further parameters that can be set within
+  \meta{options}: \ttx{pos=\meta{pos}}, \ttx{sep=\meta{sep}}.
 
-  The effect is such that after parsing and evaluation of \meta{options} (for
+  Once the arguments are parsed (and \meta{options} evaluated to process 
   \ttx{pos} and \ttx{sep}) the following \TikZ\ options and commands are available :\\[1ex]%
   \ttx{
     glert angle options/.style={\meta{options}}\\
     glert angle=\meta{angle}\\
+    glert angle target options/.style={\meta{target options}}\\
     glert angle target=\meta{target}\\
     glert angle pos=\meta{pos}\\
     glert angle sep=\meta{sep}\\
-    \ttc\def\ttc\glertangleoptions\{\meta{options}\}\\
+    glert angle inside=\meta{inward side}\\
+    glert angle outside=\meta{outward side}\\
+    glert anchor in/.style=\{anchor/.arg=\{glert angle inside\}\}\\
+    glert anchor out/.style=\{anchor/.arg=\{glert angle outside\}\}\\
+%    \ttc\def\ttc\glertangleoptions\{\meta{options}\}\\
     \ttc\def\ttc\glertangle\{\meta{angle}\}\\
     \ttc\def\ttc\glertangletarget\{\meta{target}\}\\
     \ttc\def\ttc\glertanglepos\{\meta{pos}\}\\
     \ttc\def\ttc\glertanglesep\{\meta{sep}\}\\
-    \ttc\def\ttc\glertangleplace\{(\$(\ttc\glertnode.center)!\ttc\glertanglepos!(\ttc\glertnode.\ttc\glertangle)\\
+    \ttc\def\ttc\glertanglecoord\{(\$(\ttc\glertnode.center)!\ttc\glertanglepos!(\ttc\glertnode.\ttc\glertangle)\\
     \hspace*{12em} + (\ttc\glertangle:\ttc\glertanglesep)\$)\}
   }\\[1ex]
-  The final command defines a coordinate (\meta{pos} * \ttc\glertnode\ ``radius'' + \meta{sep}) away
-  from the centre of \ttc\glertnode\ in the direction \meta{angle}.
+  Note the new key handler syntax of \ttx{\meta{option}/.arg=\meta{value
+      option}}.  This calls the  \meta{option}, passing as an argument the value
+  stored in \meta{value option}.  
+
+  The \ttc\glertanglecoord\ command defines a coordinate (\meta{pos} *
+  \ttc\glertnode\ ``radius'' + \meta{sep}) away from the centre of
+  \ttc\glertnode\ in the direction \meta{angle}. 
+
+  The \ttx{glert angle \{in\OR out\}side} options correspond to either
+  \ttx{east} or \ttx{west}.  They are mapped such that a node drawn at the end
+  of a line from |(\glertnode.center)| to \ttc\glertanglecoord\, will have the
+  \ttx{inside} fall nearer to the glert node (taking into account the prevailing
+  setting of the \TikZ\ options \ttx{sloped} and \ttx{allow upside down}).  The
+  \ttx{glert anchor \{in\OR out\}} options can be used to anchor a node by its
+  inside or outside edge.  Within either set of \meta{options}, these can be
+  abbreviated as \ttx{anchor in\OR out}.  They can also be set using
+  \ttx{\{in\OR out\}ward}, which place the anchor at the outside or inside
+  respectively, so that the text runs towards or away from the node.
+  
 \end{commandalt}
 
 Here are the definitions of some builtin glert styles:
@@ -2147,10 +2217,14 @@ Here are the definitions of some builtin glert styles:
 \makeglertstyle{connect}
   \defineglertpath{connect}{active}{(\glertnode) to #1}
   \defineglertstyle{connect}{path}{active}{draw,red,very thick,<->}
+\tikzset{glert label options/.style={glert angle pos=1, glert angle sep=0pt, glert anchor in, from=center}}
+\makeglertstyle{label}
+  \defineglertpath{label}{active}{[glert angle parser={#1}] \glertlabelfrom -- \glertanglecoord 
+    node[pos=1, glert label options, glert angle target options] {\glertangletarget}}
 \makeglertstyle{callout}
   \tikzset{glert callout options/.style={rectangle callout, draw, pos=2.5, sep=0pt}}
   \defineglertpath{callout}{active}{
-    node[glert angle parser={#1}, glert callout options, glert angle options, at=\glertangleplace,
+    node[glert angle parser={#1}, glert callout options, glert angle options, at=\glertanglecoord,
          callout absolute pointer=(\glertnode.\glertangle), node contents={\glertangletarget}]}
 \end{verbatim}
 Wherever appropriate, the argument \ttx{\#1} is applied at the end of the
