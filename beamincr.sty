@@ -1235,15 +1235,14 @@
 \newif\if@angleleft
 \def\glertangleorient#1{%
   \@angleleftfalse
-  \ifpgfslopedattime\ifpgfallowupsidedownattime\else
-    \ifstrequal{#1}{west}{\@anglelefttrue}{
-      \ifstrequal{#1}{north west}{\@anglelefttrue}{
-        \ifstrequal{#1}{south west}{\@anglelefttrue}{
-          \iffirst n{#1}{}{\iffirst s{#1}{}{\iffirst e{#1}{}{% skip other directions
-                \pgfmathparse{int(floor(cos(#1)))}
-                \ifnumless{\pgfmathresult}{0}{\@anglelefttrue}{
-    }}}}}}}
-  \fi\fi
+  \ifstrequal{#1}{west}{\@anglelefttrue}{
+    \ifstrequal{#1}{north west}{\@anglelefttrue}{
+      \ifstrequal{#1}{south west}{\@anglelefttrue}{
+        \iffirst n{#1}{}{\iffirst s{#1}{}{\iffirst e{#1}{}{% skip other directions
+              \pgfmathparse{int(floor(cos(#1)))}
+              \ifnumless{\pgfmathresult}{0}{\@anglelefttrue}{
+  }}}}}}}
+  \ifpgfslopedattime\ifpgfallowupsidedownattime\@angleleftfalse\fi\fi% 
   \if@angleleft
     \pgfqkeys{/tikz}{
       glert angle inside=east,	glert angle inside/.get=\glertangleinside,
@@ -1336,20 +1335,22 @@
 \makeglertstyle{label}
   \defineglertpath{label}{active}{[glert angle parser={#1}]
     (\glertnode.center) -- \glertanglecoord node[pos=1, glert label options, glert angle target options] {\glertangletarget}}
-\tikzset{glert callout options/.style={rectangle callout, draw, glert angle pos=2.5, glert angle sep=0pt}}
-\makeglertstyle{callout}
-  \defineglertpath{callout}{active}{node[glert callout options, glert angle parser={#1}, at=\glertanglecoord,
-      callout absolute pointer=(\glertnode.\glertangle)] {\glertangletarget}}
 \tikzset{glert signal options/.style={glert angle pos=1, glert angle sep=0pt, glert anchor in,
-    signal to in/.style={signal to=\tikzval{glert angle inside}},
-    signal to out/.style={signal to=\tikzval{glert angle outside}},
-    signal from in/.style={signal from=\tikzval{glert angle inside}},
-    signal from out/.style={signal from=\tikzval{glert angle outside}},
-    signal to in,
+    |>/.style={signal to=\tikzval{glert angle inside}},
+    >>/.style={signal to=\tikzval{glert angle inside},signal from=\tikzval{glert angle outside}},
+    >|/.style={signal from=\tikzval{glert angle outside}},
+    |</.style={signal from=\tikzval{glert angle inside}},
+    <</.style={signal from=\tikzval{glert angle inside},signal to=\tikzval{glert angle outside}},
+    <|/.style={signal to=\tikzval{glert angle outside}},
+    |>,
 }}
 \makeglertstyle{signal}
   \defineglertpath{signal}{active}{[glert angle parser={#1}]
     (\glertnode.center) -- \glertanglecoord node[signal, pos=1, glert signal options, glert angle target options] {\glertangletarget}}
+\tikzset{glert callout options/.style={rectangle callout, draw, glert angle pos=2.5, glert angle sep=0pt}}
+\makeglertstyle{callout}
+  \defineglertpath{callout}{active}{node[glert callout options, glert angle parser={#1}, glert angle target options,
+    at=\glertanglecoord, callout absolute pointer=(\glertnode.\glertangle)] {\glertangletarget}}
 
 
 
