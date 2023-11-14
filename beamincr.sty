@@ -1188,8 +1188,6 @@
 }}
 
 %% parsing arguments and opts
-\newcommand{\tikzval}[1]{\pgfkeysvalueof{/tikz/#1}}
-
 % parse [opt]angle:[tgt opt]target  (for callouts, labels, etc)
 \tikzset{
   glert angle parser/.code={\@glert@angle@parser@chkopt#1::X},
@@ -1200,16 +1198,17 @@
   glert angle inside/.initial=west,
   glert angle outside/.initial=east,
   glert angle orient/.code={\glertangleorient{#1}},
-  glert anchor in/.style={anchor=\tikzval{glert angle inside}},
-  glert anchor out/.style={anchor=\tikzval{glert angle outside}},
+  glert anchor in/.style={anchor/.arg=glert angle inside},
+  glert anchor out/.style={anchor/.arg=glert angle outside},
 }
 \pgfqkeys{/glert}{% short aliases in glert context
   pos/.style={/tikz/glert angle pos=#1},
   sep/.style={/tikz/glert angle sep=#1},
-  anchor in/.style={/tikz/glert anchor in},
-  anchor out/.style={/tikz/glert anchor out},
-  in/.style={/tikz/glert anchor out},
-  out/.style={/tikz/glert anchor in},
+  anchor in/.style={/tikz/.cd, glert anchor in},
+  anchor out/.style={/tikz/.cd, glert anchor out},
+  inward/.style={/tikz/.cd, glert anchor out},
+  outward/.style={/tikz/.cd, glert anchor in},
+  from/.code={\@glert@label@parsefrom{#1}}
 }
 \def\@glert@angle@parser@chkopt{\@ifnextchar[{\@glert@angle@parser}{\@glert@angle@parser[]}}
 \def\@glert@angle@parser[#1]#2:#3:#4X{%
@@ -1224,7 +1223,7 @@
   \pgfqkeys{/tikz}{
     glert angle options/.style={#1},
     glert angle=#2,			glert angle/.get=\glertangle,
-    glert angle target options/.style={#3},
+    glert angle target options/.style={/glert/.cd, #3},
     glert angle target=#4,    		glert angle target/.get=\glertangletarget,
     glert angle pos/.get=\glertanglepos,    
     glert angle sep/.get=\glertanglesep,
@@ -1254,6 +1253,14 @@
       glert angle outside=east,	glert angle outside/.get=\glertangleoutside,
     }
   \fi
+}
+\def\glertlabelfrom{(\glertnode.center)}
+\def\@glert@label@parsefrom#1{%
+  \ifstrequal{#1}{center}{\gdef\glertlabelfrom{(\glertnode.center)}}{%
+    \ifstrequal{#1}{corner}{\gdef\glertlabelfrom{(\glertnode.\glertangle)}}{%
+      \ifstrequal{#1}{border}{\gdef\glertlabelfrom{(\glertnode)}}{%
+        \gdef\glertlabelfrom{#1}%
+  }}}%
 }
 % useful synonyms
 \tikzset{
@@ -1298,6 +1305,15 @@
 \def\glert@name@node#1{\glert@name@node@#1}
 \def\glert@name@node@(#1){\pgfkeysalso{node inactive={name={#1}}, node active={name={#1}}}}
 
+% a handler to call a key using value from another
+\pgfkeysdef{/handlers/.arg}{
+  \edef\targetkey{\pgfkeyscurrentpath} % \pgfkeyscurrentpath will be overwritten by get
+  \pgfkeysalso{#1/.get={\temp}}        % \pgfkeysalso to evaluate in context
+  \pgfkeysalso{\targetkey/.expand once=\temp}  % force expansion of \temp
+%  \showthe\pgfkeys@pathtoks
+%  \show\temp
+}
+
 
 %% define some basic glert styles
 
@@ -1331,22 +1347,21 @@
 \makeglertstyle{connect}
   \defineglertpath{connect}{active}{(\glertnode) to #1}
   \defineglertstyle{connect}{path}{active}{draw,red,very thick,<->}
-\tikzset{glert label options/.style={glert angle pos=1, glert angle sep=0pt, glert anchor in}}
+\tikzset{glert label options/.style={glert angle pos=1, glert angle sep=0pt, glert anchor in, from=center}}
 \makeglertstyle{label}
   \defineglertpath{label}{active}{[glert angle parser={#1}]
-    (\glertnode.center) -- \glertanglecoord node[pos=1, glert label options, glert angle target options] {\glertangletarget}}
+    \glertlabelfrom -- \glertanglecoord node[pos=1, glert label options, glert angle target options] {\glertangletarget}}
 \tikzset{glert signal options/.style={glert angle pos=1, glert angle sep=0pt, glert anchor in,
-    |>/.style={signal to=\tikzval{glert angle inside}},
-    >>/.style={signal to=\tikzval{glert angle inside},signal from=\tikzval{glert angle outside}},
-    >|/.style={signal from=\tikzval{glert angle outside}},
-    |</.style={signal from=\tikzval{glert angle inside}},
-    <</.style={signal from=\tikzval{glert angle inside},signal to=\tikzval{glert angle outside}},
-    <|/.style={signal to=\tikzval{glert angle outside}},
-    |>,
-}}
+    |>/.style={signal to/.arg=glert angle inside,signal from=nowhere},
+    >>/.style={signal to/.arg=glert angle inside,signal from/.arg=glert angle outside},
+    >|/.style={signal to=nowhere, signal from/.arg=glert angle outside},
+    |</.style={signal to=nowhere, signal from/.arg=glert angle inside},
+    <</.style={signal to/.arg=glert angle outside, signal from/.arg=glert angle inside},
+    <|/.style={signal to/.arg=glert angle outside, signal from=nowhere},
+    |>,}}
 \makeglertstyle{signal}
   \defineglertpath{signal}{active}{[glert angle parser={#1}]
-    (\glertnode.center) -- \glertanglecoord node[signal, pos=1, glert signal options, glert angle target options] {\glertangletarget}}
+    \glertlabelfrom -- \glertanglecoord node[signal, pos=1, glert signal options, glert angle target options] {\glertangletarget}}
 \tikzset{glert callout options/.style={rectangle callout, draw, glert angle pos=2.5, glert angle sep=0pt}}
 \makeglertstyle{callout}
   \defineglertpath{callout}{active}{node[glert callout options, glert angle parser={#1}, glert angle target options,
