@@ -1254,12 +1254,22 @@
     }
   \fi
 }
-\def\glertlabelfrom{(\glertnode.center)}
+\def\glertanglefromcoord{(\glertnode.center)}
 \def\@glert@label@parsefrom#1{%
-  \ifstrequal{#1}{center}{\gdef\glertlabelfrom{(\glertnode.center)}}{%
-    \ifstrequal{#1}{corner}{\gdef\glertlabelfrom{(\glertnode.\glertangle)}}{%
-      \ifstrequal{#1}{border}{\gdef\glertlabelfrom{(\glertnode)}}{%
-        \gdef\glertlabelfrom{#1}%
+  \ifstrequal{#1}{center}{%
+    \gdef\glertanglefromcoord{(\glertnode.center)}%
+  }{%
+    \ifstrequal{#1}{corner}{%
+      \pgfmathparse{\pgfkeysvalueof{/tikz/glert angle sep}==0?0.1pt:\pgfkeysvalueof{/tikz/glert angle sep}}
+      \tikzset{glert angle sep/.initial/.expanded={\pgfmathresult pt}}
+      \gdef\glertanglefromcoord{(\glertnode.\glertangle)}%
+    }{%
+      \ifstrequal{#1}{border}{%
+        \pgfmathparse{\pgfkeysvalueof{/tikz/glert angle pos}==1?1.001:\pgfkeysvalueof{/tikz/glert angle pos}}
+        \tikzset{glert angle pos/.initial/.expanded=\pgfmathresult}
+        \gdef\glertanglefromcoord{(\glertnode)}%
+      }{%
+        \gdef\glertanglefromcoord{#1}%
   }}}%
 }
 % useful synonyms
@@ -1350,7 +1360,7 @@
 \tikzset{glert label options/.style={glert angle pos=1, glert angle sep=0pt, glert anchor in, from=center}}
 \makeglertstyle{label}
   \defineglertpath{label}{active}{[glert angle parser={#1}]
-    \glertlabelfrom -- \glertanglecoord node[pos=1, glert label options, glert angle target options] {\glertangletarget}}
+    \glertanglefromcoord -- \glertanglecoord node[pos=1, glert label options, glert angle target options] {\glertangletarget}}
 \tikzset{glert signal options/.style={glert angle pos=1, glert angle sep=0pt, glert anchor in,
     |>/.style={signal to/.arg=glert angle inside,signal from=nowhere},
     >>/.style={signal to/.arg=glert angle inside,signal from/.arg=glert angle outside},
@@ -1361,7 +1371,7 @@
     |>,}}
 \makeglertstyle{signal}
   \defineglertpath{signal}{active}{[glert angle parser={#1}]
-    \glertlabelfrom -- \glertanglecoord node[signal, pos=1, glert signal options, glert angle target options] {\glertangletarget}}
+    \glertanglefromcoord -- \glertanglecoord node[signal, pos=1, glert signal options, glert angle target options] {\glertangletarget}}
 \tikzset{glert callout options/.style={rectangle callout, draw, glert angle pos=2.5, glert angle sep=0pt}}
 \makeglertstyle{callout}
   \defineglertpath{callout}{active}{node[glert callout options, glert angle parser={#1}, glert angle target options,
