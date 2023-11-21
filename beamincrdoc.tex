@@ -825,6 +825,13 @@ default is specified it is taken to be \ttx{<+->} (rather than any enclosing
 default), since it is assumed that \ttx{incremental} environments are intended
 to be, well, incremental.
 
+Also in each case, a counter called \ttx{next} is set to 0 in the pre-next field
+and then advanced at every \ttc\next.  An increment label called
+\ttx{next\,\meta{n}}, where \meta{n} is the value of the \ttx{next} counter, is
+defined immediately after each \ttc\next, before any contents are processed.
+The label contains a (single) space before the number.
+
+
 \subsection{Standard incremental environments}\label{sec:envs:incremental}
 \locsection{Incremental environments}
 \tracingmacros1
@@ -846,8 +853,8 @@ to be, well, incremental.
   be followed by an optional \osarg{next specification}, which is applied to the
   \meta{next contents}.  If the specification is omitted, then the environment
   \ometa{default specification} is applied.  If no \meta{default
-    specification} was given in the environment, then the default is inherited
-  from the frame or container default.  This is ordinarily \ttx{<*>}.
+    specification} was given in the environment, then the default is assumed to
+  be \ttx{<+->}.
 
   Unlike in \ttx{itemize} environments, code can also appear before the first
   \ttc\next.  If any does, it is processed with the action specification given
@@ -857,12 +864,6 @@ to be, well, incremental.
   but whitespace appears between the opening of the environment---or the
   optional default overlay spec---and the first \ttc\next, then no action is
   applied.  
-
-  A counter called \ttx{next} is set to 0 in the pre-next field and then
-  advanced at every \ttc\next.  An increment label called \ttx{next\,\meta{n}},
-  where \meta{n} is the value of the \ttx{next} counter, is defined immediately
-  after each \ttc\next, before any contents are processed.  The label contains a
-  (single) space before the number. 
   \example
 \begin{verbatim}
 \resetincr
@@ -881,8 +882,7 @@ to be, well, incremental.
 %
 The following environments apply a specified command to each overlay contents.
 
-\begin{envwithcontents}{{incrementaldo}
-    \marg{command definition}\optsarg{default specification}}
+\begin{envwithcontents}{{incrementaldo}\marg{code}\optsarg{default specification}}
   {\item \hskip1em \osarg{pre-next specification} \opt{\meta{pre-next contents}}
     \item \ttx{\string\next}\osarg{next specification}
     \item \hskip1em \meta{next contents}
@@ -891,23 +891,33 @@ The following environments apply a specified command to each overlay contents.
     \item \hskip2em $\vdots$
   }
 
-  This version treats each \meta{next contents} as the argument to a command.
-  The command takes a single argument and is defined by \meta{command
-    definition} in the same way as in \ttc\newcommand.  As the command
-  evaluation happens deep within the bowels of \beamer\ processing, the single
-  argument generally needs to be accessed as |####1|, \emph{unless} the
-  enclosing frame is declared to be \ttx{fragile} (in the frame options), in
-  which case it is just |#1|.
+  This environment applies the command(s) in \meta{code} to each \meta{next
+    contents}.
 
-  The do command can be avoided for specific fields by using \ttc{\next*} in
-  place of \ttc\next.  Contents following \ttc{\next*} are set in the same way
-  as in a plain \ttx{incremental} environment.
+  If \meta{code} does not contain any |#| characters, \meta{next contents} is
+  placed within a single group following it (as in \meta{code}\marg{next
+    contents}).  Thus, if \meta{code} ends in a command that accepts one
+  argument, that command will be applied to the contents.
 
-  Any non-empty \meta{pre-next contents} is always processed without the do
-  command.
+  If \meta{code} does contain any |#|s then it is assumed to be the definition
+  of a command taking a single argument that should be replaced by \meta{next
+    contents} in the usual way.  As the command definition happens deep within
+  the bowels of \beamer\ processing, the argument generally needs to be accessed
+  as |####1|, \emph{unless} the enclosing frame is declared to be \ttx{fragile}
+  (in the frame options), in which case just |#1| is needed.  This behaviour is
+  triggered by \emph{any} |#| characters in \meta{code}, even if they are used
+  in a non-argument context (the input is detokenised before being scanned for
+  |#|s).  Thus if there is an ``incidental'' |#| without any reference to |#1|,
+  then \meta{next contents} will be suppressed.
+
+  The \meta{code} is skipped for any fields preceded by \ttc{\next*} in place of
+  \ttc\next.  Contents following \ttc{\next*} is set in the same way as in a
+  plain \ttx{incremental} environment.
+
+  Any non-empty \meta{pre-next contents} is always processed without \meta{code}.
   
 \end{envwithcontents}
-\begin{environment}{{do<>}\marg{command definition}\optsarg{default specification}}
+\begin{environment}{{do<>}\marg{code}\optsarg{default specification}}
   This is a synonym for |\begin{incrementaldo} ... \end{incrementaldo}|.
 \end{environment}
 
@@ -922,11 +932,11 @@ The following environments apply a specified command to each overlay contents.
     \item \hskip2em $\vdots$
   }
 
-   This version inserts \meta{code} (comprising arbitrary \LaTeX\ commands)
-   after each \ttc\next\ and before \meta{next contents}.  If \meta{code} is (or
-   ends with) a command that takes one or more arguments, these will be read
-   from \meta{next contents}.  Braces may be needed within that text to
-   delineate the arguments.
+   This version inserts \meta{code} after each \ttc\next\ and before \meta{next
+     contents} without grouping.  Thus, if \meta{code} is (or ends with) a
+   command that takes one or more arguments, these will be read from the
+   beginning of \meta{next contents}.  Braces may be needed within the contents
+   to delineate the arguments.
 
    If the optional \opt{\meta{num args}} is non-zero, then this number of
    arguments is read from the text following \ttc\next\ and can be accessed
@@ -934,9 +944,9 @@ The following environments apply a specified command to each overlay contents.
    evaluation happens deep within the bowels of \beamer\ processing, the
    parameter numbers must be protected with four |####| symbols, \emph{unless}
    the frame is declared to be \ttx{fragile} (in the frame options) in which
-   case a single |#| works.
+   case a single |#| is needed.
 
-  Execution of the \meta{code} can be avoided for specific fields by using
+  Execution of \meta{code} can be avoided for specific fields by using
   \ttc{\next*} in place of \ttc\next.  Contents following \ttc{\next*} are set
   in the same way as in a plain \ttx{incremental} environment.
 
@@ -945,12 +955,12 @@ The following environments apply a specified command to each overlay contents.
 
   \example
 \begin{verbatim}
-\tikz[every node/.style={above,allow upside down,midway,sloped}]{
-  \begin{incrementaldocmd}[1]{\draw ({72*\thenext-72}:10ex)--(72*\thenext:10ex) node {#1};}
-                          [<+-|alert@+|=>]
+\tikz[every node/.style={above,allow upside down,sloped}]{
+  \begin{incrementaldocmd}[1]{\draw ({72*\thenext-72}:10ex)--(72*\thenext:10ex) node[midway] (####1) {####1};}
+    [<+-|alert@+|=>]
     \next/one/   {one}
     \next/two/   {two}
-    \next/three/ {three (\thenext/\theincrement)}
+    \next/three/ {three} \node[left] at (three.south) {\thenext/\theincrement};
     \next/four/  {four}
     \next/five/  {five}
     \next*/done/ \draw (0:5ex) \foreach \t in {1,...,5}{ -- (\t*72:5ex)};
@@ -1869,16 +1879,17 @@ are as follows.
 
   The  \meta{path options} may include:
   \begin{description}\topsep=0pt
-  \item[\tt pos=\meta{scale}] Scale separation from glert node in proportion
-    to the glert node ``radius''.  This is similar to the \TikZ\ \ttx{pos}
-    option for placing a node on a line, where the line in question extends from
-    the centre of the glert node to its border.
+  \item[\tt pos=\meta{scale}] Scale separation from glert node centre in
+    proportion to the glert node ``radius''.  This is similar to the
+    \TikZ\ \ttx{pos} option for placing a node on a line, where the line in
+    question extends from the centre of the glert node to its border.  Thus,
+    setting \ttx{pos=2} sets the glert label anchor twice as far from the glert
+    node centre as its border in the direction \meta{angle}.
 
   \item[\tt sep=\meta{dimen}] Add \meta{dimen} to the separation from glert
-    node.  If \meta{angle} is a a keyword, \ttx{pos} moves along the
-    corresponding direction defined by the glert node shape, whereas \ttx{sep}
-    moves in the corresponding absolute direction (e.g. $45^\circ$ for
-    \ttx{north east}).
+    node.  If \meta{angle} is a keyword, \ttx{pos} moves along the corresponding
+    direction defined by the glert node shape, whereas \ttx{sep} moves in the
+    corresponding absolute direction (e.g. $45^\circ$ for \ttx{north east}).
 
   \item[\tt from=center\OR border\OR corner\OR\meta{coord}] Start the path
     defining a sloped label orientation (and a drawn path) from this location.
@@ -1993,19 +2004,22 @@ the four main maths styles), with only one rendering then being placed on the
 output page.
 
 Although the added compilation induced by this quirk is generally acceptable,
-there is one context in which it creates a real difficulty.  If a named glert is
-to be referenced (say, with the \ttx{connect} glert style), the same name is
-associated with all four nodes in turn, ending with the
+there is at least one context in which it creates a real difficulty.  If a named
+glert is to be referenced (say, with the \ttx{connect} glert style), the same
+name is associated with all four nodes in turn, ending with the
 \ttc\scriptscriptstyle\ version.  If that version isn't the one used in the
 final layout, then \TikZ\ treats the final named node as though it were in the
 bottom left corner of the page.
 
 To work around this issue \beamincr\ makes it possible to specify the correct
-mathstyle explicitly, thus removing the need for the four versions.  This is
-done by placing the style instruction as the \emph{first} token in the
-\ometa{options} to the \cmd\glert\ttx{[*]} command.  If a \meta{glert style} or
-additional options are to be provided, these must follow.  They can be separated
-from the mathstyle command by a comma, but this is not necessary.
+math style to be used within the glert options, thus removing the need for the
+four versions.  The possible options are:  
+\begin{description}
+  \item[\tt displaystyle\OR\$\$] for \cmd\displaystyle
+  \item[\tt textstyle\OR\$-] for \cmd\textstyle
+  \item[\tt scriptstyle\OR\$\_] for \cmd\scriptstyle
+  \item[\tt scriptscriptstyle\OR\$.\OR\$\_\_] for \cmd\scriptscriptstyle
+\end{description}
 
 \example
 \begin{verbatim}
@@ -2014,7 +2028,7 @@ from the mathstyle command by a comma, but this is not necessary.
 \end{equation*}
 
 \begin{equation*}% contents rendered only once in the specified style
-\int_{\glert[\scriptstyle (lo)]{-\infty}}^{\glert[\scriptstyle (hi)]{+\infty}}
+\int_{\glert[$_, (lo)]{-\infty}}^{\glert[$_, (hi)]{+\infty}}
        e^{-i\omega t} d\omega = 2\pi\delta(t)
 \end{equation*}
 \end{verbatim}
