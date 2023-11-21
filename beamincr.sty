@@ -1422,39 +1422,48 @@
 \def\glertbbox{@glertbbox}%
 \def\glertnode{@glertnode}%
 
+% fix the math style -- default is to use \mathpalette
+\pgfqkeys{/glert}{%
+  math@set@node/.initial={\mathpalette{\@glert@set@node$}},
+  displaystyle/.style={math@set@node=\@glert@set@node$\displaystyle},
+  $$/.style={displaystyle},
+  textstyle/.style={math@set@node=\@glert@set@node$\textstyle},
+  $-/.style={textstyle},
+  scriptstyle/.style={math@set@node=\@glert@set@node$\scriptstyle},
+  $_/.style={scriptstyle},
+  scriptscriptstyle/.style={math@set@node=\@glert@set@node$\scriptscriptstyle},
+  $./.style={scriptscriptstyle},
+  $__/.style={scriptscriptstyle}
+}
 
 %% glert command internals
 
 \newcommand<>\@glert[2][]{{\@glertsactivate#3\@glert@star[#1]{#2}}} % group to restrict activation
-\newcommand\@glert@star[2][]{%
-  \ifmmode\@glert@set@node@mathcheck#1,X{#2}\else\@glert@set@node{}{}[#1]{#2}\fi
-}
-
-\def\@glert@set@node@mathcheck#1#2X#3{% [opt]{text} -- check first token in opt for mathstyle
-  \ifdefequal{#1}{\displaystyle}{\@glert@set@node@math{\displaystyle}{[#2]{#3}}}{%
-    \ifdefequal{#1}{\textstyle}{\@glert@set@node@math{\textstyle}{[#2]{#3}}}{%
-      \ifdefequal{#1}{\scriptstyle}{\@glert@set@node@math{\scriptstyle}{[#2]{#3}}}{%
-        \ifdefequal{#1}{\scriptscriptstyle}{\@glert@set@node@math{\scriptscriptstyle}{[#2]{#3}}}{%
-          \mathpalette\@glert@set@node@math{[#1#2]{#3}}%
-  }}}}%
-}
-\def\@glert@set@node@math#1#2{%mathstyle; args as {[opt]{text}}
-  \@glert@set@node$#1#2%
-}
+\newcommand\@glert@star[2][]{{\pgfqkeys{/glert}{reset,#1}% process keys within a new group
+    \ifmmode%
+      \pgfqkeys{/glert}{math@set@node/.get=\glert@math@set@node}% may have been set by an option
+      \glert@math@set@node{#2}%
+    \else%
+      \@glert@set@node{}{}{#2}%
+    \fi%
+}}
+% \def\@glert@set@node@math#1#2{%mathstyle; args as {[opt]{text}}
+%   \@glert@set@node$#1#2%
+% }
 
 % Ideally we would set the node contents in a box with appropriate mathstyle and then call tikz once.
 % But \mathchoice (and therefore \mathpalette) sets all four arguments, and only chooses the
 % appropriate one at the end of mmode.
 % So the function called by \mathpalette has to complete the rendering (which it does 4 times).
-% This can be avoided by passing an explicit style instruction as above 
+% This can be avoided by passing an explicit style instruction as above.
 \newbox\@glerttext
 \newbox\@glertphtm
-\def\@glert@set@node#1#2[#3]#4{% (math)delim, style, opts, text
-  \setbox\@glerttext=\hbox{#1#2#4#1}%
+\def\@glert@set@node#1#2#3{% (math)delim, style, text
+  \setbox\@glerttext=\hbox{#1#2#3#1}%
   \setbox\@glertphtm=\null%
   \wd\@glertphtm\wd\@glerttext\ht\@glertphtm\ht\@glerttext\dp\@glertphtm\dp\@glerttext%
   \begingroup% keep defs and style local
-  \def\glerttextraw{#4}%
+  \def\glerttextraw{#3}%
   \def\glerttextbox{\copy\@glerttext}%
   \def\glertphantom{\copy\@glertphtm}%
   \def\glerttextwidth{\wd\@glerttext}%
@@ -1462,7 +1471,6 @@
   \def\glerttextdepth{\dp\@glerttext}%
   \def\glertbbox{@glertbbox}%
   \def\glertnode{@glertnode}%
-  \pgfqkeys{/glert}{reset,#3}%
   \tikz[baseline,remember picture, glert?picture]{%
     \path[use as bounding box,glert?bbox] node[anchor=base,inner sep=0pt,glert?bbox,alias=@glertbbox]{\copy\@glertphtm};
     \path node[anchor=base,glert?node,alias=@glertnode]{\copy\@glerttext};
