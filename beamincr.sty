@@ -24,6 +24,13 @@
 \long\def\iffirst#1#2#3#4{\@ifempty{#2}{#4}{\@iffirst#1#2X{#3}{#4}}}
 \long\def\@iffirst#1#2#3X#4#5{\if#1#2\x@\@firstoftwo\else\x@\@secondoftwo\fi{#4}{#5}}
 
+% does #2 contain #1 (character).   \ifinstring{char}{string}{true}{false}
+% Adapted from from https://tex.stackexchange.com/questions/26870/check-if-a-string-contains-a-given-character
+% \def\instring#1#2{TT\fi\begingroup
+%   \edef\x{\endgroup\noexpand\in@{#1}{#2}}\x\ifin@}
+\def\ifinstring#1#2{\begingroup
+  \edef\x{\endgroup\noexpand\in@{\detokenize{#1}}{\detokenize{#2}}}\x\ifin@\x@\@firstoftwo\else\x@\@secondoftwo\fi}
+
 % remove angle brackets
 \def\de@ngle<#1>{#1}
 
@@ -778,7 +785,12 @@
 
 \let\@endnext\relax
 \newenvironment{incrementaldo}[1]{%
-  \x@\long\x@\def\x@\incremental@do##1\@endnext{#1}\Collect@Body\@incremental%
+  \ifinstring{##}{#1}{%
+    \x@\long\x@\def\x@\incremental@do##1\@endnext{#1}
+  }{%
+    \x@\long\x@\def\x@\incremental@do##1\@endnext{#1{##1}}
+  }%
+  \Collect@Body\@incremental%
 }{\ignorespacesafterend}
 \@incremental@env@angles{do}
 
