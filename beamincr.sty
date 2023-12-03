@@ -157,12 +157,11 @@
     \@incrlabel@equals@futureget<#2>%
   }{\ifstrequal{/}{#1}{% \incrlabel[<>]/foo/
       \@incrlabel@equals@futureget<#2>/%
-    }\iffirst({#1}{% \incrlabel[<>]{(offset)foo}
+  }{\iffirst({#1}{% \incrlabel[<>]{(offset)foo}
       \incrlabel@do@#1X{#2}%
-    }{% \incrlabel[<>]{foo}
+  }{% \incrlabel[<>]{foo}
       \incrlabel@do@(0)#1X{#2}%
-    }%
-  }%
+  }}}%
 }
 \def\@incrlabel@equals@futureget<#1>#2/#3/{%
   \@ifempty{#3}%
