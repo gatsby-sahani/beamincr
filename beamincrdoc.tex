@@ -432,6 +432,10 @@ The general form of an increment reference is
   \againframe</$/>{myframe} % show only slide 5
 \end{verbatim}
 
+  Note that in modes such as \ttx{handout}, which ordinarily limit the number of
+  slides generated per frame, this label and related ones will evaluate to 1.
+  An alternative to access the final increment number (|$+|) is described below.
+
   \item[\tt \string$*] \hypertarget{incrref$*}{}The highest numbered overlay in
     the frame used so far.  This may be useful to have an
     \cmd\againframe\ command continue to display a partially rendered frame,
@@ -441,6 +445,12 @@ The general form of an increment reference is
     overlay number in the frame.  This may be useful to continue display
     picking up from where the last display left off.  
   
+  \item[\tt \string$+] \hypertarget{incrref$+}{}The increment number in effect
+    at the end of the frame.  This may differ from |$| or |$*| for many reasons:
+    a higher overlay number may have been used explicitly; the increment number
+    may have been reset after the highest-numbered increment was used; the mode
+    may limit the number of slides generated; and more.
+
   \item[\tt !] \hypertarget{incrref!}{} The increment number set by the most
     recent \cmd\resetincr\ command (or reset action as introduced in
     \cref{sec:actions:!}).
@@ -477,7 +487,6 @@ The general form of an increment reference is
   \vfill
   \onslide<+->
   The final increment is \incrref{.}. 
-  \incrlabel{end}
 \end{frame}
 \end{verbatim}
 %
@@ -492,15 +501,16 @@ specifications that include \meta{incrnum}s.
 One \beamer\ command (slightly patched in this package) with which named
 increments are particularly useful is \cmd\againframe.  So \example
 \begin{verbatim}
-  \againframe<1,/halfway/,/end(-1)/-/end/>{twolists}
+  \againframe<1,/halfway/,/$+(-1)/-/$+/>{twolists}
 \end{verbatim}
-provides an abbreviated tour of the lists.  Increment labels are associated with
-the label of the enclosing frame, and so the same names can safely be reused
-across multiple named frames.
+provides an abbreviated tour of the lists, visiting the first, middle and last
+two overlays.  Increment labels are associated with the label or number of the
+enclosing frame, and so the same names can safely be reused across multiple
+frames.
 
-There is also a similar new command called \cmd\handoutframe\ to render more
-than one overlay from a frame in \ttx{handout} or similar modes that otherwise
-just show a single slide with all the overlays collapsed.  See \cref{sec:again}.
+There is a similar new command called \cmd\handoutframe\ to render more than one
+overlay from a frame in \ttx{handout} or similar modes that otherwise just show
+a single slide with all the overlays collapsed.  See \cref{sec:again}.
 
 \section{Enhanced overlay action specifications}\label{sec:actions}
 
@@ -578,9 +588,9 @@ increment reference, then this value will be determined by the \emph{following}
 \ttx!\meta{incrnum}, or if there are none, the most recent increment reset (by a
 \cmd\resetincr\ command or an action).  If there are no preceding resets in the
 frame, then \ttx{/!/} (along with any offset) evaluates to 0.  See the
-discussion of \cmd\allowundefinedincrlabels\ for more on 0-valued references,
+discussion of \cmd\allowundefinedincrrefs\ for more on 0-valued references,
 but note that this behaviour for \ttx{/!/} is independent of the
-\cmd\allowundefinedincrlabels\ state.
+\cmd\allowundefinedincrrefs\ state.
 %
 \example
 \begin{verbatim}
@@ -629,13 +639,12 @@ the \cmdlink{incremental}{\tt incremental} environment
   \resetincr[3]
   \action<!/.(3)/|=>{/(-1)x/action text}
 \end{verbatim}
-the first two action calls set the label \ttx{x} to 5.  The last three
-illustrate the use of assignment offsets: if \ttx{=} is followed by a number
-in parentheses, this is treated as an offset to add to the current increment at
-assignment, in the same way as indicated by the optional
-\ttx{<\meta{incrnum}>} argument to \cmd\incrlabel.  The same effect can
-be achieved by placing the offset before the label name within the enclosing
-\ttx{//}.
+the label \ttx{x} is set to 5 by every one of the actions.  The last three cases
+illustrate the use of assignment offsets: if \ttx{=} is followed by a number in
+parentheses, this is treated as an offset to add to the current increment at
+assignment, in the same way as indicated by the optional \ttx{<\meta{incrnum}>}
+argument to \cmd\incrlabel.  The same effect can be achieved by placing the
+offset before the label name within the enclosing \ttx{//}.
 
 If no \ttx{/\meta{label}/} is found or if \meta{label} is empty, the action
 tries to do nothing quietly.  This makes it possible to use an \ttx{=} in a
@@ -655,7 +664,7 @@ explicit \ttx{//} pair appears first.  You have been warned!
     
 \begin{commandalt}[<\textasciitilde>][tilde]{{<$\cdots$\textpipe\textasciitilde\textpipe$\cdots$>}}{}
 Ordinarily, explicit overlay or action specifications override any defaults that
-might apply.  It may sometimes be convenient to instead extend the default.  The
+might apply.  It may sometimes be convenient to extend the default instead.  The
 |~| spec can be used to add the current default spec fields into an explicit
 overlay specification.  In this form, the \ttx\textasciitilde\ may be proceeded
 by, say, a mode specification, but must not be followed by any text with the
@@ -673,7 +682,7 @@ specification field (i.e., to the next \ttx\textpipe\ or \ttx>).
 Within incremental alignment environments (\cref{sec:align}), a |~| will
 incorporate the field-specific default.
 
-This extension is available is any overlay specification.
+This extension is available in any overlay specification.
 \end{commandalt}
 
 \begin{commandalt}[<defaultspec@>]{{<defaultspec@}\meta{range}\contcmd{>}}{}
@@ -728,7 +737,7 @@ This extension is available is any overlay specification.
 
 \subsection{Advanced references: using labels defined later} \label{sec:actions:advanced}
 
-\begin{command}{\allowundefinedincrlabels\oarg{flag}}%
+\begin{command}{\allowundefinedincrrefs\oarg{flag}}%
   {control whether undefined labels generate errors or  evaluate to 0}
   %
   If called alone, or with option \meta{\opt{flag}} > 0, tells \LaTeX\ not to
@@ -762,7 +771,7 @@ Many problems with advanced references (including range expansion and the
 rendering of first-slide material) can be resolved by use of
 \cmd\framescanonly\ and \cmd\againframe\ (\cref{sec:again}).
 
-An \cmd\allowundefinedincrlabels\ command also makes it possible to
+An \cmd\allowundefinedincrrefs\ command also makes it possible to
 \emph{set} the current increment to an (initially) undefined label value using
 \cmd\resetincr, \cmd\fromincr, or \ttx{<!/label/>}, thereby
 setting the current increment to 0.  Text set on that increment will not appear
@@ -1012,6 +1021,25 @@ The following environments apply a specified command to each overlay contents.
 The following environments use \TikZ\ picture commands to create their effects.
 They will only be defined if \TikZ\ is also loaded in the document preamble.
 
+\begin{envwithcontents}{{tikzpicture<>}
+    \oarg{tikz options}\optsarg{default specification}}
+  {\item \hskip1em \osarg{pre-next specification} \opt{\meta{pre-next \TikZ\ commands}}
+    \item \ttx{\string\next}\osarg{next specification}
+    \item \hskip1em \meta{\TikZ\ commands}
+    \item \hskip2em $\vdots$
+  }
+
+  This is a synonym for
+\begin{verbatim}
+\begin{tikzpicture}[options]
+  \begin{incremental}[<default spec>]
+    ...
+  \end{incremental}
+\end{tikzpicture}
+\end{verbatim}
+\end{envwithcontents}
+
+
 \begin{envwithcontents}{{incrementallayers}
     \oarg{node options}\optsarg{default specification}}
   {\item \hskip1em \osarg{pre-next specification} \opt{\meta{pre-next \TikZ\ commands}}
@@ -1074,7 +1102,7 @@ They will only be defined if \TikZ\ is also loaded in the document preamble.
     possible to set \ometa{bbox} to \ttx{current page}, in combination with an
     \ttx{overlay} option to the scope.
 %
-    The origin of he coordinates depends on the alignment of the most recent
+    The origin of the coordinates depends on the alignment of the most recent
     layer, or a \ttx{t\OR c\OR b} alignment option to the \ttc{\next*} scope.
     The origin is placed at the \ttx{north west}, \ttx{center} or \ttx{south
       west} of the bounding node, for \ttx t, \ttx c, or \ttx b alignment
@@ -2536,6 +2564,7 @@ after resetting the current mode to \ttx{beamer}.
   \hfill\OR            & \tt \hyperlink{incrref$}{|$|\ooffset}  & = \tt \meta{final overlay number}\poffset\\
   \hfill\OR            & \tt \hyperlink{incrref$*}{|$*|\ooffset}  & = \tt \meta{highest overlay used so far}\poffset\\
   \hfill\OR            & \tt \hyperlink{incrref@}{|@|\ooffset}  & = \tt \meta{most recently used overlay}\poffset\\
+  \hfill\OR            & \tt \hyperlink{incrref$+}{|$+|\ooffset}  & = \tt \meta{increment number at end of frame}\poffset\\
   \hfill\OR            & \tt \hyperlink{incrref!}{!\ooffset}  & = \tt \meta{last increment reset}\poffset\\
   \hyperlink{incrnum}{\meta{incrnum}} & \meta{num}\OR\tt /\meta{incrref}/ & increment number for |\resetincr|,
                                                                                         |\fromincr|, |\incrlabel| \\  
@@ -2546,7 +2575,7 @@ after resetting the current mode to \ttx{beamer}.
   \meta{range} & \meta{slide}\OR\ometa{slide}\t-\ometa{slide} & (at least one \ometa{slide} must be present)\\
   \hfill\OR          & \tt /\meta{incrref}-/ & = {\tt0-0} if \meta{incrref}
                                                       evaluates to 0 or is undefined and\newline
-                                                      |\allowundefinedincrlabels| is true\\ 
+                                                      |\allowundefinedincrrefs| is true\\ 
   \meta{mode} & \beamer\ mode & \tt beamer\OR trans\OR handout\OR presentation\OR article\OR all\\
   \meta{modes} & \tt \meta{mode}$_1$\textpipe\meta{mode}$_2$\textpipe \dots & \\
 

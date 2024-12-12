@@ -1368,7 +1368,7 @@
 \makeglertstyle{connect}
   \defineglertpath{connect}{active}{(\glertnode) to #1}
   \defineglertstyle{connect}{path}{active}{draw,red,very thick,<->}
-\tikzset{glert label options/.style={glert angle pos=1, glert angle sep=0pt, glert anchor in, from=center}}
+\tikzset{glert label options/.style={glert angle pos=1, glert angle sep=0pt, glert anchor in}}
 \makeglertstyle{label}
   \defineglertpath{label}{active}{[glert angle parser={#1}]
     \glertanglefromcoord -- \glertanglecoord node[pos=1, glert label options, glert angle target options] {\glertangletarget}}
@@ -1495,8 +1495,10 @@
 \@glertsactivate<0>
 
 
-
-
+%%
+%% tikzpicture<> abbreviation
+%%
+\newenvironment{tikzpicture<>}[1][]{\tikzpicture[#1]\csname<>\endcsname}{\csname end<>\endcsname\endtikzpicture}
 
 
 %% 
