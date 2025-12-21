@@ -646,6 +646,14 @@ assignment, in the same way as indicated by the optional \ttx{<\meta{incrnum}>}
 argument to \cmd\incrlabel.  The same effect can be achieved by placing the
 offset before the label name within the enclosing \ttx{//}.
 
+If the \ttc\action\ (or \ttc\item\ or \ttc\next\ \dots) is of the form
+\ttx{<only@\meta{incrspec}\textpipe=>} then the body will only be read when the \ttx{only}
+choice applies, delaying evaluation of the label.  In this case it may be better
+to use
+\begin{verbatim}
+  \action<incrpec|=>/label/\only<...>{body}
+\end{verbatim}
+
 If no \ttx{/\meta{label}/} is found or if \meta{label} is empty, the action
 tries to do nothing quietly.  This makes it possible to use an \ttx{=} in a
 default spec, while only assigning a label on selected steps.  However, this
@@ -766,6 +774,15 @@ If the range is closed with an explicit numerical or (defined) label upper
 limit, then there is no current way to suppress early expansion.  However forms
 like \ttx{/foo/-/foo(2)/} will evaluate to \ttx{0-0} as offsets are
 ignored for undefined labels.
+
+Another potential range issue occurs with ranges that start at 1.  This can be
+addressed with an additional 1 in the spec.
+\begin{verbatim}
+  % /foo/ is not defined on first evaluation
+  \onslide<1-/foo/>{spec expands to <1-0>, so text does not appear on slide 1}
+  \onslide<1,1-/foo/>{spec expands to <1,1-0>, so text appears correctly}
+  \incrlabel<2>{foo} % on later evaluations, both spec ranges will be 1-2
+\end{verbatim}
 
 Many problems with advanced references (including range expansion and the
 rendering of first-slide material) can be resolved by use of
