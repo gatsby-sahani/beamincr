@@ -2417,6 +2417,18 @@ defined.  If running a recent \LaTeX\ compiler (post 2021) the command
 \end{command}
 
 
+\begin{command}{\frameshowonly\ttx{<\meta{overlay spec}>}}
+  {show only the specified overlays}
+  %
+  Similar to \ttc{\begin\{frame\}}\ttx{<\meta{overlay spec}>} but allows the use
+  of incrrefs, including special labels such as \ttx{/\$/}.  It combines a call
+  to \cmd\framescanonly\ in the current frame with a following
+  \cmd\againframe\ttx{<\meta{overlay spec}>}; but can appear at the start of the
+  frame, improving readability if the frame is only recalled once.  The frame
+  must have a \ttx{label=} option, and can be recalled again with an explicit
+  \cmd\againframe\ as usual.
+\end{command}
+
 
 
 \section{Internals}\label{sec:internals}

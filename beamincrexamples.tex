@@ -169,23 +169,37 @@
 \handoutframe[handout|trans]</handout/>{test}
 
 
+\begin{frame}[label=test2]{frameshowonly}
+  \frameshowonly</$/>
+  \resetincr
+  \only<.>{overlay 1 text (missing)\\}
+  \onslide<+-> \incrlabel{two}
+  ovelay 2 text only -- shown twice!\\
+\end{frame}
+
+\againframe</$/>{test2}
+
+
+\CreateIncrementalAlignmentEnvironment{align}{0}[<+-|eqnum\at+->&<.->&<.->&<.->&<.->&<.->&<.->&<.->]
+
+
 \newtoks\mymatrix
 \begin{examp}
   \resetincr
-  \begin{incralign*}[<+->&<.->]% both sides each eqn/line appear at once
+  \begin{align*<>}[<+->&<.->]% both sides each eqn/line appear at once
     x\incrlabel{x} &= y & 1 &{}< 2 \\
     </x/-> x^2 &= y^2 & </x/->\resetincr[/x/] e^{i\pi} &<+->= -1 \\[2ex]
     \sum_n f(n) &<.-|alert@.>\to \int f(x) dx\\
-  \end{incralign*}
+  \end{align*<>}
   (increment at this line = \incrref{.})\\
 
   \mymatrix={\begin{pmatrix} 1 & 2 \\ \alt<+->{3}{2} & 4 \\ \end{pmatrix}}
   \protected\def\mymatrixalt{\begin{pmatrix} 1 & 2 \\ \alt<+->{3}{2} & 4 \\ \end{pmatrix}}
-  \begin{incralign}
+  \begin{align<>}
      \incrlabel{mat}\the\mymatrix \resetincr[/mat/] & \text{is }\only<+->{\textit{not }}\text{singular}
      \intertext{this is intertext}\nonumber\\[-3ex]
      <!/mat/->\mymatrixalt &<!/mat/-|alert@/mat(1)/> \text{is }\only<+->{\textit{not }}\text{singular}
-  \end{incralign}
+  \end{align<>}
 
 \end{examp}
 

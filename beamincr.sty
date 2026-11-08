@@ -748,7 +748,8 @@
 
 \newcommand<>\framescanonly{%
   \if@allowscanonly%
-  \beamincr@protected@mode#1{%
+  % no spec -> #1 is empty, and \mode{...} would break; default to <all>
+  \ifblank{#1}{\beamincr@protected@mode<all>}{\beamincr@protected@mode#1}{%
     \@ifundefined{AddToHookNext}%
       {\PackageWarning{beamincr}{\framescanonly is not supported in this LaTe\stringX version}}%
       {\AddToHookNext{shipout/before}{\DiscardShipoutBox}}%
@@ -761,6 +762,47 @@
 \@allowscanonlytrue
 \def\@ifallowscanonlystate{\if@allowscanonly1\else0\fi}
 
+ 
+%% 
+%% \frameshowonly<spec>
+%% 
+% Like \frame<spec>, but the spec is parsed by beamincr (so /labels/, /$/ etc.
+% work).  It combines \framescanonly with an immediate \againframe. 
+% The frame must have a label= option.
+%
+% The replay is queued in \beamincr@afterframe and run at the end of the frame
+% (see below).  It is stored with \gdef (not appended), so calling \frameshowonly on
+% every overlay of the scanning pass queues it once only, and the macro is
+% cleared before it runs.  The replay itself does not re-queue because
+% \againframe turns \allowframescanonly off.
+
+\let\beamincr@afterframe\@empty
+
+\newcommand<>\frameshowonly{%
+  \if@allowscanonly
+    \ifdefempty{\beamer@againname}%
+      {\PackageError{beamincr}{\string\frameshowonly\space requires a frame with a label= option}{}}%
+      {\@ifundefined{AddToHook}%
+        {\PackageWarning{beamincr}{\string\frameshowonly\space is not supported in this LaTe\stringX version}}%
+        {\framescanonly
+         \xdef\beamincr@afterframe{\noexpand\againframe
+           \unexpanded{#1}{\beamer@againname}}}}%
+  \fi
+}
+
+% Beamer runs \beamer@reseteecodes after every frame (normal, fragile and
+% \againframe); env/frame/after is never reached because beamer swallows
+% \end{frame} while collecting the body.  Code is prepended: the macro ends with
+% \beamer@resumemode, which pops the mode stack and resumes reading input.  The
+% replayed frame pushes and pops its own mode, so nesting it here is balanced.
+\def\beamincr@runafterframe{%
+  \ifx\beamincr@afterframe\@empty\else
+    \let\beamincr@afterframe@run\beamincr@afterframe
+    \global\let\beamincr@afterframe\@empty
+    \beamincr@afterframe@run
+  \fi}
+\pretocmd{\beamer@reseteecodes}{\beamincr@runafterframe}{}%
+  {\PackageWarning{beamincr}{Could not patch \string\beamer@reseteecodes; \string\frameshowonly\space disabled}}
 
 
 
